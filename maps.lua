@@ -2,7 +2,7 @@ sets = require('sets')
 tables = require('tables')
 local mb_dark = {"stone", "water", "ice"}
 local mb_light = {"fire", "aero", "thunder"}
-local mb_aspir - {"aspir"}
+local mb_aspir = {"aspir"}
 
 SUPER_MAP = T{
     mb_ws = T{
