@@ -13,7 +13,12 @@ resources = require('resources')
 
 MAPS = require('maps')
 local SPELL_FLAG_MAP = MAPS.spell_flag_map
+local GEO_FLAG_MAP = MAPS.geo
+local INDI_FLAG_MAP = MAPS.ind
+
 local LEADER_FLAG_MAP = MAPS.leader_flag_map
+
+local CUSTOM_FLAG_MAP = MAPS.custom
 
 local WS_FLAGS = MAPS.mb_ws
 
@@ -75,14 +80,21 @@ windower.register_event('chat message', function(message, sender, mode, gm)
             type = 'command',
             spell_details = LEADER_FLAG_MAP[args[2]],
         })
+    elseif CUSTOM_FLAG_MAP[flag] then
+        -- ?????
     end
 
     while #TASK_QUEUE > 0 do
-        print(#TASK_QUEUE)
+        -- print(#TASK_QUEUE)
         process_queue()
-        print('task completed. ', #TASK_QUEUE, ' left.')
+        -- print('task completed. ', #TASK_QUEUE, ' left.')
+        
     end
 end)
+
+function example()
+    print("this is an example of a custom function")
+end
 
 function process_queue()
 
@@ -147,8 +159,10 @@ local TIER_DELAY = T{
     [' V'] = 2,
 }
 
-function cast_spell(task_table)
+function cast_spell(task_table, after_ws)
 
+
+    -- print(string.format('starting new spell %s', task_table.spell_details.name))
     -- if true then
     --     return
     -- end
@@ -191,7 +205,7 @@ function cast_spell(task_table)
         TOGGLES.BUSY = true
 
         if spell_details.offensive == true then
-            if TOGGLES.MAGICBURST and spell_tier ~= nil then
+            if spell_tier ~= nil and after_ws then
                 delay = TIER_DELAY[spell_tier]
             else
                 delay = 1
@@ -212,13 +226,14 @@ function cast_spell(task_table)
             windower.send_command(string.format('input /ma "%1s" %2s', spell_name, target))
         end
     else
-        print(string.format('Usable spell not found for %s', task_table.flag))
+        print(string.format('Usable spell not found for %s', task_table.spell_details.name))
         TOGGLES.BUSY = false
         return
     end
 
+    sleep(cast_time + 3)
+    -- print('exiting spell')
     if TOGGLES.ALWAYS_FOLLOW and #TASK_QUEUE == 0 then
-        sleep(cast_time)
         windower.send_command(string.format('ffo %s', LEADER_NAME))
     end
 end
@@ -241,8 +256,11 @@ MB_SPELL_COUNTER = 1
 function execute_leader_command(task_table)
     if LEADER_FLAG_MAP[task_table.flag] then
         TOGGLES.BUSY = true
+
         flag = task_table.flag
         task_args = task_table.args
+
+        sub_command = task_args[2]
 
         if WS_FLAGS[flag] then
             ws_spells = WS_FLAGS[flag]
@@ -254,26 +272,27 @@ function execute_leader_command(task_table)
             if spell_details then
                 task_table.flag = new_flag
                 task_table.spell_details = spell_details
-                cast_spell(task_table)
+                after_ws = true
+                cast_spell(task_table, after_ws)
             end
         elseif flag == 'mb' then
 
-            if 0 <= tonumber(target) and tonumber(target) < 6 then
-                if tonumber(target) == 0 then
+            if sub_command and 0 <= tonumber(sub_command) and tonumber(sub_command) < 6 then
+                if tonumber(sub_command) == 0 then
                     OPTTIONS.ELEMENTAL_TIER_LIMIT = nil
                     target = 'none'
                 else
-                    OPTTIONS.ELEMENTAL_TIER_LIMIT = tonumber(target)
+                    OPTTIONS.ELEMENTAL_TIER_LIMIT = tonumber(sub_command)
                 end
                 print(string.format('spell tier limit: %s', target))
 
-            elseif listContains({'aero', 'fire', 'blizzard', 'thunder', 'stone', 'water', 'none'}, target) then
+            elseif listContains({'aero', 'fire', 'blizzard', 'thunder', 'stone', 'water', 'none'}, sub_command) then
                 if target == 'none' then
                     OPTIONS.FORCE_ELEMENT = nil
                     print('not forcing element')
                 else
-                    OPTIONS.FORCE_ELEMENT = target
-                    print(string.format('forcing %s', target))
+                    OPTIONS.FORCE_ELEMENT = sub_command
+                    print(string.format('forcing %s', sub_command))
                 end
 
             else
@@ -288,11 +307,16 @@ function execute_leader_command(task_table)
 
 
         elseif flag == 'sneak' then
+            TOGGLES.BUSY = true
             sneak()
 
         elseif flag == 'follow' then
             windower.send_command(string.format('ffo %s', LEADER_NAME))
             TOGGLES.ALWAYS_FOLLOW = true
+
+            if sub_command and 0 < tonumber(sub_command) and tonumber(sub_command) < 5 then
+                windower.send_command(string.format('ffo min %s', sub_command))
+            end
 
         elseif flag == 'stop' then
             windower.send_command('ffo stop')
@@ -311,31 +335,39 @@ function execute_leader_command(task_table)
             windower.send_command('input /dismount')
 
         elseif flag == 'ind' then
-            if task_args and task_args[2] then
-                indi_flags = LEADER_FLAG_MAP[flag]
-                task_table.flag = task_args[2]
+            if task_args and sub_command then
+                details = INDI_FLAG_MAP[sub_command]
+
+                task_table.flag = sub_command
                 task_table.target = '<me>'
-                task_table.spell_details = indi_flags[task_args[2]]
-                cast_spell(task_table)
+                task_table.spell_details = details
+
+                if details then cast_spell(task_table) end
             end
 
         elseif flag == 'ent' then
-            if task_args[2] and task_args[3] then
-                indi_flags = LEADER_FLAG_MAP['ind']
-                windower.send_command('input /ja "Entrust" <me>')
-                sleep(1)
-                task_table.flag = task_args[2]
-                task_table.spell_details = indi_flags[task_args[2]]
-                cast_spell(task_table)
+            if sub_command and sub_command then
+                details = INDI_FLAG_MAP[sub_command]
+
+                task_table.flag = sub_command
+                task_table.spell_details = details
+
+                if spell_details then
+                    windower.send_command('input /ja "Entrust" <me>')
+                    sleep(1)
+                    cast_spell(task_table)
+                end
             end
 
         elseif flag == 'lp' then
-            if task_args and task_args[2] then
-                geo_flags = LEADER_FLAG_MAP[flag]
-                task_table.flag = task_args[2]
+            if task_args and sub_command then
+                details = GEO_FLAG_MAP[sub_command]
+
+                task_table.flag = sub_command
                 task_table.target = '<me>'
-                task_table.spell_details = geo_flags[task_args[2]]
-                cast_spell(task_table)
+                task_table.spell_details = details
+
+                if details then cast_spell(task_table) end
             end
 
         elseif flag == 'fc' then
@@ -382,6 +414,17 @@ function rr()
     windower.send_command('input /ma "Reraise" <me>')
     sleep(5)
 end
+
+------------------------------------------------------------------------------------------------------------------------
+----------------------------CUSTOM FUNCTIONS----------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+function exampleflag()
+    print('this is a custom function')
+end
+
+
+
 ------------------------------------------------------------------------------------------------------------------------
 ----------------------------HELPER FUNCTIONS----------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
@@ -474,20 +517,24 @@ function get_available_spells(spell)
 end
 
 function split(inputstr, sep)
-        if sep == nil then
-                sep = " "
-        end
-        local t={}
-        for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
-                table.insert(t, str)
-        end
-        return t
+    if sep == nil then
+            sep = " "
+    end
+    local t={}
+    for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+        table.insert(t, str)
+    end
+    return t
 end
 
 function sleep(n)  -- seconds
     local clock = os.clock
     local t0 = clock()
+    -- print(t0)
     while clock() - t0 <= n do end
+
+    -- t0 = clock()
+    -- print(t0)
 end
 
 function table_to_str(target_table, delimiter)
