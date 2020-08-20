@@ -2,10 +2,9 @@ sets = require('sets')
 tables = require('tables')
 local mb_dark = {"stone", "water", "ice"}
 local mb_light = {"fire", "aero", "thunder"}
+local mb_aspir - {"aspir"}
 
 SUPER_MAP = T{
-    mb_dark = mb_dark,
-    mb_light = mb_light,
     mb_ws = T{
         ["catastrophe"] = mb_dark,
         ["torcleaver"] = mb_light,
@@ -132,7 +131,6 @@ SUPER_MAP = T{
         -- pew pew
         -- figure this shit out
         ["mb"] = {leader_only=true},
-        ["catastrophe"] = {leader_only=true},
 
         ["sic"] = {leader_only=true},
         ["rr"] = {name="Reraise", geo_spell=false, offensive=false},
