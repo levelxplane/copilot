@@ -10,7 +10,6 @@ SUPER_MAP = T{
         ["catastrophe"] = mb_dark,
         ["torcleaver"] = mb_light,
     },
-    spell_tiers = S{" V", " IV", " III", " II", ""},
     spell_flag_map = T{
         -- nukes
         ["fire"] = {name="Fire", geo_spell=false, offensive=true, tiers={" V", " IV", " III", " II", ""}},
@@ -54,7 +53,62 @@ SUPER_MAP = T{
         ["curaga"] = {name="Curaga", geo_spell=false, offensive=false, tiers={" III", " II", ""}},
         ["raise"] = {name="Raise", geo_spell=false, offensive=false, tiers={" III", " II", ""}},
     },
+            -- geo stuff
+            -- cmd lp
+    geo = T{
+        ["slow"] = {name="Geo-Slow", geo_spell=true, offensive=true},
+        ["eva-"] = {name="Geo-Torpor", geo_spell=true, offensive=true},
+        ["acc-"] = {name="Geo-Slip", geo_spell=true, offensive=true},
+        ["meva"] = {name="Geo-Languor", geo_spell=true, offensive=true},
+        ["para"] = {name="Geo-Paralysis", geo_spell=true, offensive=true},
+        ["macc-"] = {name="Geo-Vex", geo_spell=true, offensive=true},
+        ["def-"] = {name="Geo-Frailty", geo_spell=true, offensive=true},
+        ["atk-"] = {name="Geo-Wilt", geo_spell=true, offensive=true},
+        ["grav"] = {name="Geo-Gravity", geo_spell=true, offensive=true},
+        ["mdef-"] = {name="Geo-Malaise", geo_spell=true, offensive=true},
+        ["matk-"] = {name="Geo-Fade", geo_spell=true, offensive=true},
 
+        ["regen"] = {name="Geo-Regen", geo_spell=true, offensive=false},
+        ["refresh"] = {name="Geo-Refresh", geo_spell=true, offensive=false},
+        ["haste"] = {name="Geo-Haste", geo_spell=true, offensive=false},
+        ["eva"] = {name="Geo-Voidance", geo_spell=true, offensive=false},
+        ["acc"] = {name="Geo-Precision", geo_spell=true, offensive=false},
+        ["meva"] = {name="Geo-Attunement", geo_spell=true, offensive=false},
+        ["macc"] = {name="Geo-Focus", geo_spell=true, offensive=false},
+        ["def"] = {name="Geo-Barrier", geo_spell=true, offensive=false},
+        ["atk"] = {name="Geo-Fury", geo_spell=true, offensive=false},
+        ["mdef"] = {name="Geo-Fend", geo_spell=true, offensive=false},
+        ["matk"] = {name="Geo-Acumen", geo_spell=true, offensive=false},
+    },
+    -- cmd ind or ent --
+    -- indi debuffs -- treat like non-offensive spells
+    ind = T{
+        ["poison"] = {name="Indi-Poison", geo_spell=true, offensive=false},
+        ["slow"] = {name="Indi-Slow", geo_spell=true, offensive=false},
+        ["eva-"] = {name="Indi-Torpor", geo_spell=true, offensive=false},
+        ["acc-"] = {name="Indi-Slip", geo_spell=true, offensive=false},
+        ["meva"] = {name="Indi-Languor", geo_spell=true, offensive=false},
+        ["para"] = {name="Indi-Paralysis", geo_spell=true, offensive=false},
+        ["macc-"] = {name="Indi-Vex", geo_spell=true, offensive=false},
+        ["def-"] = {name="Indi-Frailty", geo_spell=true, offensive=false},
+        ["atk-"] = {name="Indi-Wilt", geo_spell=true, offensive=false},
+        ["grav"] = {name="Indi-Gravity", geo_spell=true, offensive=false},
+        ["mdef-"] = {name="Indi-Malaise", geo_spell=true, offensive=false},
+        ["matk-"] = {name="Indi-Fade", geo_spell=true, offensive=false},
+
+        -- indi buffs
+        ["regen"] = {name="Indi-Regen", geo_spell=true, offensive=false},
+        ["refresh"] = {name="Indi-Refresh", geo_spell=true, offensive=false},
+        ["haste"] = {name="Indi-Haste", geo_spell=true, offensive=false},
+        ["eva"] = {name="Indi-Voidance", geo_spell=true, offensive=false},
+        ["acc"] = {name="Indi-Precision", geo_spell=true, offensive=false},
+        ["meva"] = {name="Indi-Attunement", geo_spell=true, offensive=false},
+        ["macc"] = {name="Indi-Focus", geo_spell=true, offensive=false},
+        ["def"] = {name="Indi-Barrier", geo_spell=true, offensive=false},
+        ["atk"] = {name="Indi-Fury", geo_spell=true, offensive=false},
+        ["mdef"] = {name="Indi-Fend", geo_spell=true, offensive=false},
+        ["matk"] = {name="Indi-Acumen", geo_spell=true, offensive=false},
+    },
     leader_flag_map = T{
         -- custom spells. need to assign functions somehow.
         ["sneak"] = {leader_only=true},
@@ -82,64 +136,9 @@ SUPER_MAP = T{
 
         ["sic"] = {leader_only=true},
         ["rr"] = {name="Reraise", geo_spell=false, offensive=false},
-
-        -- geo stuff
-        -- cmd lp
-
-        ["lp"] = {
-            ["slow"] = {name="Geo-Slow", geo_spell=true, offensive=true},
-            ["eva-"] = {name="Geo-Torpor", geo_spell=true, offensive=true},
-            ["acc-"] = {name="Geo-Slip", geo_spell=true, offensive=true},
-            ["meva"] = {name="Geo-Languor", geo_spell=true, offensive=true},
-            ["para"] = {name="Geo-Paralysis", geo_spell=true, offensive=true},
-            ["macc-"] = {name="Geo-Vex", geo_spell=true, offensive=true},
-            ["def-"] = {name="Geo-Frailty", geo_spell=true, offensive=true},
-            ["atk-"] = {name="Geo-Wilt", geo_spell=true, offensive=true},
-            ["grav"] = {name="Geo-Gravity", geo_spell=true, offensive=true},
-            ["mdef-"] = {name="Geo-Malaise", geo_spell=true, offensive=true},
-            ["matk-"] = {name="Geo-Fade", geo_spell=true, offensive=true},
-
-            ["regen"] = {name="Geo-Regen", geo_spell=true, offensive=false},
-            ["refresh"] = {name="Geo-Refresh", geo_spell=true, offensive=false},
-            ["haste"] = {name="Geo-Haste", geo_spell=true, offensive=false},
-            ["eva"] = {name="Geo-Voidance", geo_spell=true, offensive=false},
-            ["acc"] = {name="Geo-Precision", geo_spell=true, offensive=false},
-            ["meva"] = {name="Geo-Attunement", geo_spell=true, offensive=false},
-            ["macc"] = {name="Geo-Focus", geo_spell=true, offensive=false},
-            ["def"] = {name="Geo-Barrier", geo_spell=true, offensive=false},
-            ["atk"] = {name="Geo-Fury", geo_spell=true, offensive=false},
-            ["mdef"] = {name="Geo-Fend", geo_spell=true, offensive=false},
-            ["matk"] = {name="Geo-Acumen", geo_spell=true, offensive=false},
-        },
-        -- cmd ind or ent --
-        -- indi debuffs -- treat like non-offensive spells
-        ["ind"] = {
-            ["poison"] = {name="Indi-Poison", geo_spell=true, offensive=false},
-            ["slow"] = {name="Indi-Slow", geo_spell=true, offensive=false},
-            ["eva-"] = {name="Indi-Torpor", geo_spell=true, offensive=false},
-            ["acc-"] = {name="Indi-Slip", geo_spell=true, offensive=false},
-            ["meva"] = {name="Indi-Languor", geo_spell=true, offensive=false},
-            ["para"] = {name="Indi-Paralysis", geo_spell=true, offensive=false},
-            ["macc-"] = {name="Indi-Vex", geo_spell=true, offensive=false},
-            ["def-"] = {name="Indi-Frailty", geo_spell=true, offensive=false},
-            ["atk-"] = {name="Indi-Wilt", geo_spell=true, offensive=false},
-            ["grav"] = {name="Indi-Gravity", geo_spell=true, offensive=false},
-            ["mdef-"] = {name="Indi-Malaise", geo_spell=true, offensive=false},
-            ["matk-"] = {name="Indi-Fade", geo_spell=true, offensive=false},
-
-            -- indi buffs
-            ["regen"] = {name="Indi-Regen", geo_spell=true, offensive=false},
-            ["refresh"] = {name="Indi-Refresh", geo_spell=true, offensive=false},
-            ["haste"] = {name="Indi-Haste", geo_spell=true, offensive=false},
-            ["eva"] = {name="Indi-Voidance", geo_spell=true, offensive=false},
-            ["acc"] = {name="Indi-Precision", geo_spell=true, offensive=false},
-            ["meva"] = {name="Indi-Attunement", geo_spell=true, offensive=false},
-            ["macc"] = {name="Indi-Focus", geo_spell=true, offensive=false},
-            ["def"] = {name="Indi-Barrier", geo_spell=true, offensive=false},
-            ["atk"] = {name="Indi-Fury", geo_spell=true, offensive=false},
-            ["mdef"] = {name="Indi-Fend", geo_spell=true, offensive=false},
-            ["matk"] = {name="Indi-Acumen", geo_spell=true, offensive=false},
-        },
+    },
+    custom = T{
+        ["exampleflag"] = {prop1="aa", prop2="bb"}
     },
 }
 
