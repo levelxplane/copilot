@@ -71,7 +71,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
             type = 'spell',
             spell_details = SPELL_FLAG_MAP[flag]
         })
-    elseif LEADER_FLAG_MAP[flag] then
+    elseif LEADER_FLAG_MAP[flag] or WS_FLAGS[flag] then
         table.insert(TASK_QUEUE, {
             flag = flag,
             args = args,
@@ -88,7 +88,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         -- print(#TASK_QUEUE)
         process_queue()
         -- print('task completed. ', #TASK_QUEUE, ' left.')
-        
+
     end
 end)
 
