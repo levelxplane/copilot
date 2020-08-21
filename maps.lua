@@ -1,6 +1,6 @@
 sets = require('sets')
 tables = require('tables')
-local mb_dark = {"stone", "water", "ice"}
+local mb_dark = {"stone", "water", "blizzard"}
 local mb_light = {"fire", "aero", "thunder"}
 local mb_aspir = {"aspir"}
 
