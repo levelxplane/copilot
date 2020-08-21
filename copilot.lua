@@ -12,26 +12,10 @@ files = require('files')
 resources = require('resources')
 
 MAPS = require('maps')
-local SPELL_FLAG_MAP = MAPS.spell_flag_map
-local GEO_FLAG_MAP = MAPS.geo
-local INDI_FLAG_MAP = MAPS.ind
-
-local LEADER_FLAG_MAP = MAPS.leader_flag_map
-
-local CUSTOM_FLAG_MAP = MAPS.custom
-
-local WS_FLAGS = MAPS.mb_ws
 
 local LEADER_NAME = 'Berlioz' -- character to follow/assist. basically the actual person playing.
+local MOUNT = 'Tulfaire'
 
-local OPTIONS = T{
-    CURRENT_TARGET = nil, -- current target id
-    FORCE_LUOPAN = nil, -- which Luopan to use by default
-    FORCE_INDI = nil,  -- which indi to use by default
-    FORCE_ELEMENT = nil, -- which elemental spell to use by default
-    ELEMENTAL_TIER_LIMIT = nil,
-    PLAYER_ID = windower.ffxi.get_player().id, -- ID of character using this script.
-}
 
 local TOGGLES = T{
     BUSY = false,  -- Probably not needed anymore. determine if needed
@@ -42,6 +26,26 @@ local TOGGLES = T{
 }
 local MB_COUNTER = 1
 local NUKE_TIER_LIMIT = 5
+
+
+local SPELL_FLAG_MAP = MAPS.spell_flag_map
+local GEO_FLAG_MAP = MAPS.geo
+local INDI_FLAG_MAP = MAPS.ind
+
+local LEADER_FLAG_MAP = MAPS.leader_flag_map
+
+local CUSTOM_FLAG_MAP = MAPS.custom
+
+local WS_FLAGS = MAPS.mb_ws
+
+local OPTIONS = T{
+    CURRENT_TARGET = nil, -- current target id
+    FORCE_LUOPAN = nil, -- which Luopan to use by default
+    FORCE_INDI = nil,  -- which indi to use by default
+    FORCE_ELEMENT = nil, -- which elemental spell to use by default
+    ELEMENTAL_TIER_LIMIT = nil,
+    PLAYER_ID = windower.ffxi.get_player().id, -- ID of character using this script.
+}
 
 PREVIOUS_TASK = nil
 
@@ -71,7 +75,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
             type = 'spell',
             spell_details = SPELL_FLAG_MAP[flag]
         })
-    elseif LEADER_FLAG_MAP[flag] or WS_FLAGS[flag] then
+    elseif LEADER_FLAG_MAP[flag] and sender == LEADER_NAME and (mode == 4 or mode == 3) then
         table.insert(TASK_QUEUE, {
             flag = flag,
             args = args,
@@ -80,7 +84,28 @@ windower.register_event('chat message', function(message, sender, mode, gm)
             type = 'command',
             spell_details = LEADER_FLAG_MAP[args[2]],
         })
-    elseif CUSTOM_FLAG_MAP[flag] then
+    elseif WS_FLAGS[flag] and sender == LEADER_NAME and (mode == 4 or mode == 3) then
+        ws_spells = WS_FLAGS[flag]
+        MB_SPELL_COUNTER = (MB_SPELL_COUNTER % #ws_spells) + 1
+
+
+        if OPTIONS.FORCE_ELEMENT == nil then
+            new_flag = ws_spells[MB_SPELL_COUNTER]
+        else
+            new_flag = OPTIONS.FORCE_ELEMENT
+        end
+        spell_details = SPELL_FLAG_MAP[new_flag]
+
+        table.insert(TASK_QUEUE, {
+            flag = new_flag,
+            args = args,
+            sender = sender,
+            target = nil,
+            type = 'spell',
+            spell_details = spell_details,
+            after_ws = true,
+        })
+    elseif CUSTOM_FLAG_MAP[flag] and (mode == 4 or mode == 3) then
         -- ?????
     end
 
@@ -159,7 +184,7 @@ local TIER_DELAY = T{
     [' V'] = 2,
 }
 
-function cast_spell(task_table, after_ws)
+function cast_spell(task_table)
 
 
     -- print(string.format('starting new spell %s', task_table.spell_details.name))
@@ -205,7 +230,7 @@ function cast_spell(task_table, after_ws)
         TOGGLES.BUSY = true
 
         if spell_details.offensive == true then
-            if spell_tier ~= nil and after_ws then
+            if spell_tier ~= nil and task_table.after_ws then
                 delay = TIER_DELAY[spell_tier]
             else
                 delay = 1
@@ -262,29 +287,16 @@ function execute_leader_command(task_table)
 
         sub_command = task_args[2]
 
-        if WS_FLAGS[flag] then
-            ws_spells = WS_FLAGS[flag]
-            MB_SPELL_COUNTER = (MB_SPELL_COUNTER % #ws_spells) + 1
-
-            new_flag = OPTIONS.FORCE_ELEMENT or ws_spells[MB_SPELL_COUNTER]
-            spell_details = SPELL_FLAG_MAP[new_flag]
-
-            if spell_details then
-                task_table.flag = new_flag
-                task_table.spell_details = spell_details
-                after_ws = true
-                cast_spell(task_table, after_ws)
-            end
-        elseif flag == 'mb' then
-
+        print(flag)
+        if flag == 'mb' then
             if sub_command and 0 <= tonumber(sub_command) and tonumber(sub_command) < 6 then
                 if tonumber(sub_command) == 0 then
                     OPTTIONS.ELEMENTAL_TIER_LIMIT = nil
                     target = 'none'
                 else
-                    OPTTIONS.ELEMENTAL_TIER_LIMIT = tonumber(sub_command)
+                    OPTIONS.ELEMENTAL_TIER_LIMIT = tonumber(sub_command)
                 end
-                print(string.format('spell tier limit: %s', target))
+                print(string.format('spell tier limit: %s', sub_command))
 
             elseif listContains({'aero', 'fire', 'blizzard', 'thunder', 'stone', 'water', 'none'}, sub_command) then
                 if target == 'none' then
