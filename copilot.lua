@@ -198,6 +198,10 @@ function cast_spell(task_table)
     spell_details = task_table.spell_details
     primed_spells = get_available_spells()
     spell_resource = nil
+    print(task_table.flag)
+    if task_table.after_ws then
+        print('from ws')
+    end
     tmp_tiers = spell_details.tiers
 
     if OPTIONS.ELEMENTAL_TIER_LIMIT and spell_details.offensive then
@@ -341,7 +345,7 @@ function execute_leader_command(task_table)
             windower.send_command('myhome')
 
         elseif flag == 'mount' then
-            windower.send_command(string.format('input /mount "%s"'), MOUNT)
+            windower.send_command(string.format('input /mount "%s"', MOUNT))
 
         elseif flag == 'dismount' then
             windower.send_command('input /dismount')
