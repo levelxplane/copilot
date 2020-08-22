@@ -114,7 +114,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
             flag = flag,
             args = args,
             sender = sender,
-            target = args[3],
+            target = args[3] or '<me>',
             type = 'command',
             spell_details = LEADER_FLAG_MAP[args[2]],
         })
@@ -415,7 +415,6 @@ function execute_leader_command(task_table)
                 details = GEO_FLAG_MAP[sub_command]
 
                 task_table.flag = sub_command
-                task_table.target = '<me>'
                 task_table.spell_details = details
 
                 if details then cast_spell(task_table) end
