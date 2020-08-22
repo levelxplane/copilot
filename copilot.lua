@@ -90,7 +90,17 @@ windower.register_event('chat message', function(message, sender, mode, gm)
     -- mode 3 is tell
     -- mode 27 is ls
     flag = args[1]:lower()
-    if mode == 4 and SPELL_FLAG_MAP[flag] and listContains(party_names, sender) then
+
+    -- do something
+    -- PARTY_ONLY = True and Sender in Party
+    -- PARTY_ONLY = False
+
+    -- do not do
+    -- PARTY_ONLY = True and SEnder Not in Party
+
+    party_only_check = TOGGLES.PARTY_ONLY == false or (TOGGLES.PARTY_ONLY and listContains(party_names, sender))
+
+    if mode == 4 and SPELL_FLAG_MAP[flag] and party_only_check then
         table.insert(TASK_QUEUE, {
             flag = flag,
             args = args,
@@ -409,6 +419,26 @@ function execute_leader_command(task_table)
                 task_table.spell_details = details
 
                 if details then cast_spell(task_table) end
+            end
+        elseif flag == 'lpp' then
+            if task_args and sub_command then
+                details = GEO_FLAG_MAP[sub_command]
+
+                task_table.flag = sub_command
+                task_table.target = '<me>'
+                task_table.spell_details = details
+
+                if details then
+                    windower.send_command('input /ja "Blaze of Glory" <me>')
+                    sleep(1)
+                    cast_spell(task_table)
+                    windower.send_command('input /ja "Ecliptic Attrition" <me>')
+                    sleep(1)
+                    windower.send_command('input /ja "Life Cycle" <me>')
+                    sleep(1)
+                    windower.send_command('input /ja "Dematerialize" <me>')
+                    sleep(1)
+                end
             end
 
         elseif flag == 'fc' then
