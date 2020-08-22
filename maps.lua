@@ -86,7 +86,7 @@ SUPER_MAP = T{
         ["slow"] = {name="Indi-Slow", geo_spell=true, offensive=false},
         ["eva-"] = {name="Indi-Torpor", geo_spell=true, offensive=false},
         ["acc-"] = {name="Indi-Slip", geo_spell=true, offensive=false},
-        ["meva"] = {name="Indi-Languor", geo_spell=true, offensive=false},
+        ["meva-"] = {name="Indi-Languor", geo_spell=true, offensive=false},
         ["para"] = {name="Indi-Paralysis", geo_spell=true, offensive=false},
         ["macc-"] = {name="Indi-Vex", geo_spell=true, offensive=false},
         ["def-"] = {name="Indi-Frailty", geo_spell=true, offensive=false},
@@ -123,7 +123,9 @@ SUPER_MAP = T{
         -- geo stuff
         ["ind"] = {leader_only=true},
         ["ent"] = {leader_only=true},
+
         ["lp"] = {leader_only=true},
+        ["lpp"] = {leader_only=true},
         ["fc"] = {leader_only=true},
         ["ra"] = {leader_only=true},
 
