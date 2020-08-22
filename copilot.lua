@@ -328,7 +328,7 @@ function execute_leader_command(task_table)
 
         print(flag)
         if flag == 'mb' then
-            if sub_command and 0 <= tonumber(sub_command) and tonumber(sub_command) < 6 then
+            if tonumber(sub_command) and (0 <= tonumber(sub_command) and tonumber(sub_command) < 6) then
                 if tonumber(sub_command) == 0 then
                     OPTTIONS.ELEMENTAL_TIER_LIMIT = nil
                     target = 'none'
