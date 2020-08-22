@@ -13,6 +13,8 @@ resources = require('resources')
 
 MAPS = require('maps')
 
+
+--------------------------------- Personal Config ---------------------------------------
 local LEADER_NAME = 'Berlioz' -- character to follow/assist. basically the actual person playing.
 local MOUNT = 'Tulfaire'
 
@@ -23,6 +25,7 @@ local TOGGLES = T{
 
     ALWAYS_FOLLOW = true, -- if using ffo, always follow or not.
     MAGICBURST = true,  -- try to MB if enabled
+    PARTY_ONLY = true,
 }
 local MB_COUNTER = 1
 local NUKE_TIER_LIMIT = 5
@@ -54,6 +57,27 @@ TASK_QUEUE = T{}
 windower.register_event('chat message', function(message, sender, mode, gm)
 
     player_info = windower.ffxi.get_player()
+    party_info = windower.ffxi.get_party()
+
+    party_members = {
+        party_info.p0,
+        party_info.p1,
+        party_info.p2,
+        party_info.p3,
+        party_info.p4,
+        party_info.p5,
+    }
+    party_names = {
+        LEADER_NAME,
+        -- any really anyone you specically wanna whitelist to always get cures
+    }
+
+    -- for k, v in pairs(party_members) do
+    --     if v then
+    --         print (v.name)
+    --         table.insert(party_names, v.name)
+    --     end
+    -- end
 
     if dead() then
         return
@@ -66,7 +90,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
     -- mode 3 is tell
     -- mode 27 is ls
     flag = args[1]:lower()
-    if mode == 4 and SPELL_FLAG_MAP[flag] then
+    if mode == 4 and SPELL_FLAG_MAP[flag] and listContains(party_names, sender) then
         table.insert(TASK_QUEUE, {
             flag = flag,
             args = args,
@@ -84,7 +108,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
             type = 'command',
             spell_details = LEADER_FLAG_MAP[args[2]],
         })
-    elseif WS_FLAGS[flag] and sender == LEADER_NAME and (mode == 4 or mode == 3) then
+    elseif TOGGLES.MAGICBURST and WS_FLAGS[flag] and sender == LEADER_NAME and (mode == 4 or mode == 3) then
         ws_spells = WS_FLAGS[flag]
         MB_SPELL_COUNTER = (MB_SPELL_COUNTER % #ws_spells) + 1
 
@@ -191,6 +215,7 @@ function cast_spell(task_table)
     -- if true then
     --     return
     -- end
+
     spell_name = nil
     spell_tier = nil
     cast_time = 1
@@ -198,10 +223,10 @@ function cast_spell(task_table)
     spell_details = task_table.spell_details
     primed_spells = get_available_spells()
     spell_resource = nil
-    print(task_table.flag)
-    if task_table.after_ws then
-        print('from ws')
-    end
+    -- print(task_table.flag)
+    -- if task_table.after_ws then
+    --     print('from ws')
+    -- end
     tmp_tiers = spell_details.tiers
 
     if OPTIONS.ELEMENTAL_TIER_LIMIT and spell_details.offensive then
@@ -467,9 +492,9 @@ windower.register_event('addon command',function (command, ...)
         end
 
         -- windower.send_command(string.format('input /ma "%s" ', luopan) .. '<me>')
-    elseif command == 'test' then
+    elseif command == 'po' then
         -- nui id == 597433
-        print('test')
+        if TOGGLES.PARTY_ONLY then TOGGLES.PARTY_ONLY = false else TOGGLES.PARTY_ONLY = true end
     else
         display_help()
     end
