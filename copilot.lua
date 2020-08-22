@@ -330,15 +330,15 @@ function execute_leader_command(task_table)
         if flag == 'mb' then
             if tonumber(sub_command) and (0 <= tonumber(sub_command) and tonumber(sub_command) < 6) then
                 if tonumber(sub_command) == 0 then
-                    OPTTIONS.ELEMENTAL_TIER_LIMIT = nil
-                    target = 'none'
+                    OPTIONS.ELEMENTAL_TIER_LIMIT = nil
+                    --target = 'none'
                 else
                     OPTIONS.ELEMENTAL_TIER_LIMIT = tonumber(sub_command)
                 end
                 print(string.format('spell tier limit: %s', sub_command))
 
             elseif listContains({'aero', 'fire', 'blizzard', 'thunder', 'stone', 'water', 'none'}, sub_command) then
-                if target == 'none' then
+                if sub_command == 'none' then
                     OPTIONS.FORCE_ELEMENT = nil
                     print('not forcing element')
                 else
