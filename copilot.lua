@@ -331,6 +331,8 @@ function cast_spell(task_table)
         windower.send_command('ffo stop')
         windower.ffxi.run(false)
 
+        sleep(0.2)
+
         TOGGLES.BUSY = true
 
         if spell_details.offensive == true then
