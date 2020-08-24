@@ -11,6 +11,7 @@ tables = require('tables')
 files = require('files')
 resources = require('resources')
 
+
 MAPS = require('maps')
 
 
@@ -48,36 +49,97 @@ local OPTIONS = T{
     FORCE_ELEMENT = nil, -- which elemental spell to use by default
     ELEMENTAL_TIER_LIMIT = nil,
     PLAYER_ID = windower.ffxi.get_player().id, -- ID of character using this script.
+    WHITELIST = S{
+        LEADER_NAME,
+    },
+    PARTY_MEMBERS = {}
 }
 
+TASK_QUEUE = T{}
 PREVIOUS_TASK = nil
 
-TASK_QUEUE = T{}
+local next_frame = os.clock()
+local frame_check_period = 1
+local party_index = {}
+windower.register_event('prerender', function()
+    local now = os.clock()
+
+    if now < next_frame then
+        return
+    end
+
+    next_frame = now + frame_check_period
+    if #TASK_QUEUE > 0 then
+        coroutine.schedule(process_queue, 0)
+    end
+    --
+    -- print (#TASK_QUEUE)
+    -- print (#OPTIONS.PARTY_MEMBERS)
+
+end)
+--
+-- windower.register_event('incoming chunk', function(id, data)
+--
+--     -- print(string.format('%1s %2s'.format(id, 'zoop')))
+--     if id == 23 and #TASK_QUEUE > 0 then
+--         print('looool')
+--         process_queue()
+--     end
+-- end)
+
+
+local PARTY_QUEUE_LIMIT = 1 -- limit number of things to be queued
+local PARTY_QUEUE_COUNTER = 0
+
+function update_party_members(check_only)
+
+    party_data = windower.ffxi.get_party()
+    if party_data ==  nil then
+        return
+    end
+
+    if check_only and party_data.party1_count ~= #OPTIONS.PARTY_MEMBERS then
+        party_names = {}
+        party_indexes = {}
+
+        for _, p_ind in pairs({'p0', 'p1', 'p2', 'p3', 'p4', 'p5'}) do
+            if party_data[p_ind] and party_data[p_ind].mob ~= nil then
+                table.insert(party_names, party_data[p_ind].name)
+                table.insert(party_indexes, p_ind)
+            end
+        end
+        OPTIONS.PARTY_MEMBERS = party_indexes
+
+
+        OPTIONS.WHITELIST = party_names
+        table.insert(OPTIONS.WHITELIST, LEADER_NAME)
+        -- add more for other people to whitelist
+    end
+
+    if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT then
+        for _, p_ind in pairs(OPTIONS.PARTY_MEMBERS) do
+            member = party_data[p_ind]
+            if member.hpp < 70 then
+                PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
+                print(member.name .. tostring(member.hpp))
+                table.insert(TASK_QUEUE, {
+                    flag = 'cure',
+                    args = {'cure', member.name},
+                    sender = member.name,
+                    target = member.name,
+                    type = 'spell',
+                    spell_details = SPELL_FLAG_MAP['cure'],
+                    from_queue = true,
+                })
+            end
+        end
+    end
+end
 
 windower.register_event('chat message', function(message, sender, mode, gm)
-
+    update_party_members(true)
     player_info = windower.ffxi.get_player()
-    party_info = windower.ffxi.get_party()
-
-    party_members = {
-        party_info.p0,
-        party_info.p1,
-        party_info.p2,
-        party_info.p3,
-        party_info.p4,
-        party_info.p5,
-    }
-    party_names = {
-        LEADER_NAME,
-        -- any really anyone you specically wanna whitelist to always get cures
-    }
-
-    -- for k, v in pairs(party_members) do
-    --     if v then
-    --         print (v.name)
-    --         table.insert(party_names, v.name)
-    --     end
-    -- end
+    party_names = OPTIONS.WHITELIST
 
     if dead() then
         return
@@ -143,12 +205,14 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         -- ?????
     end
 
-    while #TASK_QUEUE > 0 do
-        -- print(#TASK_QUEUE)
-        process_queue()
-        -- print('task completed. ', #TASK_QUEUE, ' left.')
+    update_party_members()
 
-    end
+    -- while #TASK_QUEUE > 0 do
+    --     -- print(#TASK_QUEUE)
+    --     process_queue()
+    --     -- print('task completed. ', #TASK_QUEUE, ' left.')
+    --
+    -- end
 end)
 
 function example()
@@ -156,7 +220,6 @@ function example()
 end
 
 function process_queue()
-
     if TOGGLES.BUSY == false then
         affliction = debuffed()
         if affliction and TOGGLES.SUFFERING == false then
@@ -179,6 +242,10 @@ function process_queue()
 
         current_task = table.remove(TASK_QUEUE, 1)
 
+        if current_task.from_queue then
+            PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER - 1
+        end
+
         if current_task.type == 'spell' then
             cast_spell(current_task)
         elseif current_task.type == 'command' then
@@ -189,10 +256,8 @@ function process_queue()
 
         TOGGLES.BUSY = false
     else
-        table.remove(TASK_QUEUE, 1)
         TOGGLES.BUSY = false
     end
-
 end
 -- process_queue:loop(10)
 
@@ -237,15 +302,10 @@ function cast_spell(task_table)
     -- if task_table.after_ws then
     --     print('from ws')
     -- end
-    tmp_tiers = spell_details.tiers
-
-    if OPTIONS.ELEMENTAL_TIER_LIMIT and spell_details.offensive then
-        tmp_counter = OPTIONS.ELEMENTAL_TIER_LIMIT
-
-        while tmp_counter - 1 > 0 do
-            xxx = table.remove(tmp_tiers, 1)
-            tmp_counter = tmp_counter - 1
-        end
+    if OPTIONS.ELEMENTAL_TIER_LIMIT and listContains({'aero', 'fire', 'blizzard', 'thunder', 'stone', 'water'}, task_table.flag) then
+        tmp_tiers = OPTIONS.ELEMENTAL_TIER_LIMIT
+    else
+        tmp_tiers = spell_details.tiers
     end
 
     if tmp_tiers then
@@ -260,12 +320,17 @@ function cast_spell(task_table)
         spell_resource = primed_spells[spell_details.name]
     end
 
-    if spell_resource then
+    player_info = windower.ffxi.get_player()
+    combat_check = spell_details.offensive == false or (spell_details.offensive == true and player_info.in_combat == true)
+
+    if spell_resource and combat_check then
 
         spell_name = spell_resource.en
         cast_time = spell_resource.cast_time
 
         windower.send_command('ffo stop')
+        windower.ffxi.run(false)
+
         TOGGLES.BUSY = true
 
         if spell_details.offensive == true then
@@ -295,7 +360,7 @@ function cast_spell(task_table)
         return
     end
 
-    sleep(cast_time + 3)
+    sleep((cast_time - 0.5) + 3)
     -- print('exiting spell')
     if TOGGLES.ALWAYS_FOLLOW and #TASK_QUEUE == 0 then
         windower.send_command(string.format('ffo %s', LEADER_NAME))
@@ -332,8 +397,14 @@ function execute_leader_command(task_table)
                 if tonumber(sub_command) == 0 then
                     OPTIONS.ELEMENTAL_TIER_LIMIT = nil
                     --target = 'none'
-                else
-                    OPTIONS.ELEMENTAL_TIER_LIMIT = tonumber(sub_command)
+                elseif tonumber(sub_command) == 1 then
+                    OPTIONS.ELEMENTAL_TIER_LIMIT = {''}
+                elseif tonumber(sub_command) == 2 then
+                    OPTIONS.ELEMENTAL_TIER_LIMIT = {' II', ''}
+                elseif tonumber(sub_command) == 3 then
+                    OPTIONS.ELEMENTAL_TIER_LIMIT = {' III', ' II', ''}
+                elseif tonumber(sub_command) == 4 then
+                    OPTIONS.ELEMENTAL_TIER_LIMIT = {' IV', ' III', ' II', ''}
                 end
                 print(string.format('spell tier limit: %s', sub_command))
 
@@ -365,8 +436,9 @@ function execute_leader_command(task_table)
             windower.send_command(string.format('ffo %s', LEADER_NAME))
             TOGGLES.ALWAYS_FOLLOW = true
 
-            if sub_command and 0 < tonumber(sub_command) and tonumber(sub_command) < 5 then
+            if sub_command and 0 < tonumber(sub_command) and tonumber(sub_command) < 8 then
                 windower.send_command(string.format('ffo min %s', sub_command))
+                print(string.format('ffo min %s', sub_command))
             end
 
         elseif flag == 'stop' then

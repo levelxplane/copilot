@@ -8,6 +8,7 @@ SUPER_MAP = T{
     mb_ws = T{
         ["catastrophe"] = mb_dark,
         ["torcleaver"] = mb_light,
+        ["savage"] = mb_dark,
     },
     spell_flag_map = T{
         -- nukes
