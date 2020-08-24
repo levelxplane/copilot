@@ -356,13 +356,17 @@ function cast_spell(task_table)
             windower.send_command(string.format('input /p Casting "%1s" on %2s!', spell_name, target))
             windower.send_command(string.format('input /ma "%1s" %2s', spell_name, target))
         end
+
+        if #TASK_QUEUE > 0 then
+            sleep((cast_time - 0.5) + 3)
+        else
+            sleep(cast_time - 0.5)
+        end
     else
-        print(string.format('Usable spell not found for %s', task_table.spell_details.name))
+        print(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
         TOGGLES.BUSY = false
-        return
     end
 
-    sleep((cast_time - 0.5) + 3)
     -- print('exiting spell')
     if TOGGLES.ALWAYS_FOLLOW and #TASK_QUEUE == 0 then
         windower.send_command(string.format('ffo %s', LEADER_NAME))
