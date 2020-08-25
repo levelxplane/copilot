@@ -35,6 +35,7 @@ local NUKE_TIER_LIMIT = 5
 local SPELL_FLAG_MAP = MAPS.spell_flag_map
 local GEO_FLAG_MAP = MAPS.geo
 local INDI_FLAG_MAP = MAPS.ind
+local SMN_FLAG_MAP = MAPS.smn
 
 local LEADER_FLAG_MAP = MAPS.leader_flag_map
 
@@ -119,9 +120,9 @@ function update_party_members(check_only)
     if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT then
         for _, p_ind in pairs(OPTIONS.PARTY_MEMBERS) do
             member = party_data[p_ind]
-            if member.hpp < 70 then
+            if member.hpp < 70 and member.mob ~= nil then
                 PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
-                print(member.name .. tostring(member.hpp))
+                -- print(member.name .. tostring(member.hpp))
                 table.insert(TASK_QUEUE, {
                     flag = 'cure',
                     args = {'cure', member.name},
@@ -131,6 +132,7 @@ function update_party_members(check_only)
                     spell_details = SPELL_FLAG_MAP['cure'],
                     from_queue = true,
                 })
+            -- elseif member.
             end
         end
     end
@@ -312,6 +314,7 @@ function cast_spell(task_table)
         for _, tier in pairs(tmp_tiers) do
             spell_resource = primed_spells[spell_details.name .. tier]
             if spell_resource then
+                print('found ' .. spell_resource.en)
                 spell_tier = tier
                 break
             end
@@ -323,7 +326,10 @@ function cast_spell(task_table)
     player_info = windower.ffxi.get_player()
     combat_check = spell_details.offensive == false or (spell_details.offensive == true and player_info.in_combat == true)
 
-    if spell_resource and combat_check then
+    if combat_check then
+        print ('in combat or healing spell')
+    end
+    if spell_resource and combat_check and spell_resource.mp_cost < player_info.vitals.mp then
 
         spell_name = spell_resource.en
         cast_time = spell_resource.cast_time
@@ -362,9 +368,13 @@ function cast_spell(task_table)
         else
             sleep(cast_time - 0.5)
         end
-    else
+    elseif spell_resource ~= nil then
         print(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
         TOGGLES.BUSY = false
+    elseif spell_resource.mp_cost > player_info.vitals.mp then
+        windower.send_command(string.format('input /p Out of MP :c'))
+    else
+        print('other error found during spell lookup')
     end
 
     -- print('exiting spell')
@@ -526,17 +536,29 @@ function execute_leader_command(task_table)
             windower.send_command('input /ja "Radial Arcana" <me>')
             sleep(1)
 
+        elseif flag ==  'rr' then
+            task_table.target = '<me>'
+            task_table.spell_details = LEADER_FLAG_MAP[flag]
+            cast_spell(task_table)
+
         elseif flag == 'sic' then
             windower.send_command(string.format('input /assist %s', LEADER_NAME))
             sleep(1)
             windower.send_command('input /p Attacking on <t>!')
             windower.send_command('input /pet Assault <t>')
             windower.send_command('input /lockon')
+        elseif flag == 'release' then
+            windower.send_command('input /pet Release <me>')
+        elseif flag == 'smn' then
+            details = SMN_FLAG_MAP[sub_command]
 
-        elseif flag ==  'rr' then
+            task_table.flag = sub_command
             task_table.target = '<me>'
-            task_table.spell_details = LEADER_FLAG_MAP[flag]
-            cast_spell(task_table)
+            task_table.spell_details = details
+
+            if details then cast_spell(task_table) end
+        elseif flag == 'hastega' then
+            windower.send_command('input /pet "Hastega II" <me>')
         end
     end
     TOGGLES.BUSY = false

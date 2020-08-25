@@ -109,6 +109,9 @@ SUPER_MAP = T{
         ["mdef"] = {name="Indi-Fend", geo_spell=true, offensive=false},
         ["matk"] = {name="Indi-Acumen", geo_spell=true, offensive=false},
     },
+    smn = T{
+        ["garuda"] = {name="Garuda", geo_spell=false, offensive=false},
+    },
     leader_flag_map = T{
         -- custom spells. need to assign functions somehow.
         ["sneak"] = {leader_only=true},
@@ -130,12 +133,15 @@ SUPER_MAP = T{
         ["fc"] = {leader_only=true},
         ["ra"] = {leader_only=true},
 
+        -- smn stuff
+        ["smn"] = {leader_only=true},
+        ["sic"] = {leader_only=true},
+        ["release"] = {leader_only=true},
+        ["hastega"] = {leader_only=true},
 
         -- pew pew
         -- figure this shit out
         ["mb"] = {leader_only=true},
-
-        ["sic"] = {leader_only=true},
         ["rr"] = {name="Reraise", geo_spell=false, offensive=false},
     },
     custom = T{
