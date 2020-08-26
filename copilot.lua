@@ -41,7 +41,7 @@ local SMN_FLAG_MAP = MAPS.smn
 
 local LEADER_FLAG_MAP = MAPS.leader_flag_map
 
-local CUSTOM_FLAG_MAP = MAPS.custom
+-- local CUSTOM_FLAG_MAP = T{}
 
 local WS_FLAGS = MAPS.mb_ws
 
@@ -153,7 +153,7 @@ end
 
 function check_party_status()
     if OPTIONS.IN_COMBAT == false then
-        print('not in combat')
+        -- print('not in combat')
         return
      end
 
@@ -163,7 +163,7 @@ function check_party_status()
             member = party_data[p_ind]
             if member.hpp < 70 and member.mob ~= nil and member.mob.is_npc == false then
                 PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
-                print(member.name .. tostring(member.hpp))
+                -- print(member.name .. tostring(member.hpp))
                 tmp_details = SPELL_FLAG_MAP['cure']
                 tmp_details.tiers = {" III", " II", ""}
                 table.insert(TASK_QUEUE, {
@@ -182,13 +182,16 @@ function check_party_status()
 end
 
 windower.register_event('chat message', function(message, sender, mode, gm)
-    update_party_members()
     player_info = windower.ffxi.get_player()
-    party_names = OPTIONS.WHITELIST
+    print (mode)
 
-    if dead() then
+    if (mode == 3 or mode == 4) and dead(player_info.status) == false then
+
+    else
         return
     end
+    update_party_members()
+    party_names = OPTIONS.WHITELIST
     -- from party
     args = split(message)
 
@@ -207,6 +210,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
 
     party_only_check = TOGGLES.PARTY_ONLY == false or (TOGGLES.PARTY_ONLY and listContains(party_names, sender))
 
+    -- print(type(CUSTOM_FLAG_MAP[flag]))
     if mode == 4 and SPELL_FLAG_MAP[flag] and party_only_check then
         table.insert(TASK_QUEUE, {
             flag = flag,
@@ -216,7 +220,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
             type = 'spell',
             spell_details = SPELL_FLAG_MAP[flag]
         })
-    elseif LEADER_FLAG_MAP[flag] and sender == LEADER_NAME and (mode == 4 or mode == 3) then
+    elseif LEADER_FLAG_MAP[flag] and sender == LEADER_NAME then
         table.insert(TASK_QUEUE, {
             flag = flag,
             args = args,
@@ -225,7 +229,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
             type = 'command',
             spell_details = LEADER_FLAG_MAP[args[2]],
         })
-    elseif TOGGLES.MAGICBURST and WS_FLAGS[flag] and sender == LEADER_NAME and (mode == 4 or mode == 3) then
+    elseif TOGGLES.MAGICBURST and WS_FLAGS[flag] and sender == LEADER_NAME then
         ws_spells = WS_FLAGS[flag]
         MB_SPELL_COUNTER = (MB_SPELL_COUNTER % #ws_spells) + 1
 
@@ -246,8 +250,11 @@ windower.register_event('chat message', function(message, sender, mode, gm)
             spell_details = spell_details,
             after_ws = true,
         })
-    elseif CUSTOM_FLAG_MAP[flag] and (mode == 4 or mode == 3) then
-        -- ?????
+    elseif type(CUSTOM_FLAG_MAP[flag]) == 'function' and sender == LEADER_NAME then
+        -- print('custom')
+        tmp_func = CUSTOM_FLAG_MAP[flag]
+
+        tmp_func()
     end
 
     -- while #TASK_QUEUE > 0 do
@@ -257,10 +264,6 @@ windower.register_event('chat message', function(message, sender, mode, gm)
     --
     -- end
 end)
-
-function example()
-    print("this is an example of a custom function")
-end
 
 function process_queue()
     -- print(#TASK_QUEUE)
@@ -354,7 +357,7 @@ function cast_spell(task_table)
         for _, tier in pairs(tmp_tiers) do
             spell_resource = primed_spells[spell_details.name .. tier]
             if spell_resource then
-                print('found ' .. spell_resource.en)
+                -- print('found ' .. spell_resource.en)
                 spell_tier = tier
                 break
             end
@@ -371,9 +374,9 @@ function cast_spell(task_table)
     end
     combat_check = spell_details.offensive == false or (spell_details.offensive == true and OPTIONS.IN_COMBAT)
 
-    if combat_check then
-        print ('in combat or healing spell')
-    end
+    -- if combat_check then
+    --     print ('in combat or healing spell')
+    -- end
     if spell_resource and combat_check and spell_resource.mp_cost < player_info.vitals.mp then
 
         spell_name = spell_resource.en
@@ -411,11 +414,10 @@ function cast_spell(task_table)
         if #TASK_QUEUE > 0 then
             sleep(cast_time + 3)
         else
-            sleep(cast_time + 1)
+            sleep(cast_time + 0.75)
         end
     elseif spell_resource ~= nil then
         print(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
-        TOGGLES.BUSY = false
     elseif spell_resource.mp_cost > player_info.vitals.mp then
         windower.send_command(string.format('input /p Out of MP :c'))
     else
@@ -424,6 +426,7 @@ function cast_spell(task_table)
 
     -- print('exiting spell')
     if TOGGLES.ALWAYS_FOLLOW and #TASK_QUEUE == 0 then
+        TOGGLES.BUSY = false
         windower.send_command(string.format('ffo %s', LEADER_NAME))
     end
 end
@@ -625,19 +628,23 @@ function sneak()
     sleep(7)
 end
 
+------------------------------------------------------------------------------------------------------------------------
+----------------------------CUSTOM FUNCTIONS----------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+function example_flag_function()
+    print('this is a custom function')
+end
+
 function rr()
     windower.send_command('input /ma "Reraise" <me>')
     sleep(5)
 end
 
-------------------------------------------------------------------------------------------------------------------------
-----------------------------CUSTOM FUNCTIONS----------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
--------------------------------------------------------------------------------------------------------------------------
-function exampleflag()
-    print('this is a custom function')
-end
-
+CUSTOM_FLAG_MAP = {
+    ["exampleflag"] = example_flag_function,
+    ["rr"] = rr,
+}
 
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -706,9 +713,9 @@ function debuffed()
     end
 end
 
-function dead()
+function dead(current_status)
     dead_status = {2, 3}
-    if listContains(dead_status, windower.ffxi.get_player().status) then
+    if listContains(dead_status, current_status) then
         return true
     else
         return false
