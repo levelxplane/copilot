@@ -50,13 +50,14 @@ local OPTIONS = T{
     FORCE_LUOPAN = nil, -- which Luopan to use by default
     FORCE_INDI = nil,  -- which indi to use by default
     FORCE_ELEMENT = nil, -- which elemental spell to use by default
-    ELEMENTAL_TIER_LIMIT = nil,
+    ELEMENTAL_TIER_LIMIT = {' III', ' II', ''},
     PLAYER_ID = windower.ffxi.get_player().id, -- ID of character using this script.
     WHITELIST = S{
         LEADER_NAME,
     },
     PARTY_MEMBERS = {},
-    AUTOHEAL = false,
+    AUTOHEAL = true,
+    IN_COMBAT = false,
 }
 
 TASK_QUEUE = T{}
@@ -72,30 +73,30 @@ buffs['whitelist'] = {}
 buffs['blacklist'] = {}
 
 
-windower.register_event('incoming chunk', function(id, data)
-    if id == 0x076 then
-        -- print(id)
-        -- print(type(id))
-        for  k = 0, 4 do
-            local id = data:unpack('I', k*48+5)
-            buffs['whitelist'][id] = {}
-			buffs['blacklist'][id] = {}
-
-            if id ~= 0 then
-                for i = 1, 32 do
-                    local buff = data:byte(k*48+5+16+i-1) + 256*( math.floor( data:byte(k*48+5+8+ math.floor((i-1)/4)) / 4^((i-1)%4) )%4) -- Credit: Byrth, GearSwap
-                    if buffs['whitelist'][id][i] ~= buff then
-                        buffs['whitelist'][id][i] = buff
-                    end
-					if buffs['blacklist'][id][i] ~= buff then
-                        buffs['blacklist'][id][i] = buff
-                    end
-                end
-            end
-        end
-    end
-
-end)
+-- windower.register_event('incoming chunk', function(id, data)
+--     if id == 0x076 then
+--         -- print(id)
+--         -- print(type(id))
+--         for  k = 0, 4 do
+--             local id = data:unpack('I', k*48+5)
+--             buffs['whitelist'][id] = {}
+-- 			buffs['blacklist'][id] = {}
+--
+--             if id ~= 0 then
+--                 for i = 1, 32 do
+--                     local buff = data:byte(k*48+5+16+i-1) + 256*( math.floor( data:byte(k*48+5+8+ math.floor((i-1)/4)) / 4^((i-1)%4) )%4) -- Credit: Byrth, GearSwap
+--                     if buffs['whitelist'][id][i] ~= buff then
+--                         buffs['whitelist'][id][i] = buff
+--                     end
+-- 					if buffs['blacklist'][id][i] ~= buff then
+--                         buffs['blacklist'][id][i] = buff
+--                     end
+--                 end
+--             end
+--         end
+--     end
+--
+-- end)
 
 windower.register_event('prerender', function()
     local now = os.clock()
@@ -105,9 +106,7 @@ windower.register_event('prerender', function()
     end
 
     next_frame = now + frame_check_period
-    if #TASK_QUEUE > 0 then
-        coroutine.schedule(process_queue, 0)
-    end
+    coroutine.schedule(process_queue, 0)
     --
     -- print (#TASK_QUEUE)
     -- print (#OPTIONS.PARTY_MEMBERS)
@@ -124,17 +123,17 @@ end)
 -- end)
 
 
-local PARTY_QUEUE_LIMIT = 1 -- limit number of things to be queued
+local PARTY_QUEUE_LIMIT = 2 -- limit number of things to be queued
 local PARTY_QUEUE_COUNTER = 0
 
-function update_party_members(check_only)
+function update_party_members()
 
     party_data = windower.ffxi.get_party()
     if party_data ==  nil then
         return
     end
 
-    if check_only and party_data.party1_count ~= #OPTIONS.PARTY_MEMBERS then
+    if party_data.party1_count ~= #OPTIONS.PARTY_MEMBERS then
         party_names = {}
         party_indexes = {}
 
@@ -146,25 +145,34 @@ function update_party_members(check_only)
         end
         OPTIONS.PARTY_MEMBERS = party_indexes
 
-
         OPTIONS.WHITELIST = party_names
         table.insert(OPTIONS.WHITELIST, LEADER_NAME)
         -- add more for other people to whitelist
     end
+end
 
+function check_party_status()
+    if OPTIONS.IN_COMBAT == false then
+        print('not in combat')
+        return
+     end
+
+    party_data = windower.ffxi.get_party()
     if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT and OPTIONS.AUTOHEAL then
         for _, p_ind in pairs(OPTIONS.PARTY_MEMBERS) do
             member = party_data[p_ind]
-            if member.hpp < 61 and member.mob ~= nil and member.mob.is_npc == false then
+            if member.hpp < 70 and member.mob ~= nil and member.mob.is_npc == false then
                 PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
-                -- print(member.name .. tostring(member.hpp))
+                print(member.name .. tostring(member.hpp))
+                tmp_details = SPELL_FLAG_MAP['cure']
+                tmp_details.tiers = {" III", " II", ""}
                 table.insert(TASK_QUEUE, {
                     flag = 'cure',
                     args = {'cure', member.name},
                     sender = member.name,
                     target = member.name,
                     type = 'spell',
-                    spell_details = SPELL_FLAG_MAP['cure'],
+                    spell_details = tmp_details,
                     from_queue = true,
                 })
             -- elseif member.
@@ -174,7 +182,7 @@ function update_party_members(check_only)
 end
 
 windower.register_event('chat message', function(message, sender, mode, gm)
-    update_party_members(true)
+    update_party_members()
     player_info = windower.ffxi.get_player()
     party_names = OPTIONS.WHITELIST
 
@@ -242,8 +250,6 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         -- ?????
     end
 
-    update_party_members()
-
     -- while #TASK_QUEUE > 0 do
     --     -- print(#TASK_QUEUE)
     --     process_queue()
@@ -257,15 +263,13 @@ function example()
 end
 
 function process_queue()
-    if TOGGLES.BUSY == false then
+    -- print(#TASK_QUEUE)
+    if TOGGLES.BUSY == false and #TASK_QUEUE > 0 then
         affliction = debuffed()
         if affliction and TOGGLES.SUFFERING == false then
             TOGGLES.SUFFERING = true
             windower.send_command(string.format('input /p I am suffering from %s.', affliction))
-            if afflication == 'Silence' then
-                windower.send_command('input /item "Echo Drops" <me>')
-                sleep(1)
-            else
+            if TOGGLES.SUFFERING then
                 windower.send_command(string.format('input /item Remedy <me>'))
                 sleep(1)
             end
@@ -295,6 +299,7 @@ function process_queue()
     else
         TOGGLES.BUSY = false
     end
+    check_party_status()
 end
 -- process_queue:loop(10)
 
@@ -359,7 +364,12 @@ function cast_spell(task_table)
     end
 
     player_info = windower.ffxi.get_player()
-    combat_check = spell_details.offensive == false or (spell_details.offensive == true and player_info.in_combat == true)
+    if player_info.in_combat then
+        OPTIONS.IN_COMBAT = true
+    else
+        OPTIONS.IN_COMBAT = false
+    end
+    combat_check = spell_details.offensive == false or (spell_details.offensive == true and OPTIONS.IN_COMBAT)
 
     if combat_check then
         print ('in combat or healing spell')
@@ -399,9 +409,9 @@ function cast_spell(task_table)
         end
 
         if #TASK_QUEUE > 0 then
-            sleep((cast_time) + 3)
+            sleep(cast_time + 3)
         else
-            sleep(cast_time)
+            sleep(cast_time + 1)
         end
     elseif spell_resource ~= nil then
         print(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
@@ -656,10 +666,16 @@ windower.register_event('addon command',function (command, ...)
         end
     elseif command == 'autoheal' then
         if OPTIONS.AUTOHEAL then OPTIONS.AUTOHEAL = false else OPTIONS.AUTOHEAL = true end
+        if OPTIONS.AUTOHEAL then
+            print('will autoheal')
+        end
         -- windower.send_command(string.format('input /ma "%s" ', luopan) .. '<me>')
     elseif command == 'po' then
         -- nui id == 597433
         if TOGGLES.PARTY_ONLY then TOGGLES.PARTY_ONLY = false else TOGGLES.PARTY_ONLY = true end
+        if OPTIONS.PARTY_ONLY then
+            print('only party')
+        end
     else
         display_help()
     end
