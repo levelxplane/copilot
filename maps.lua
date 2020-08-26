@@ -142,10 +142,6 @@ SUPER_MAP = T{
         -- pew pew
         -- figure this shit out
         ["mb"] = {leader_only=true},
-        ["rr"] = {name="Reraise", geo_spell=false, offensive=false},
-    },
-    custom = T{
-        ["exampleflag"] = {prop1="aa", prop2="bb"}
     },
 }
 
