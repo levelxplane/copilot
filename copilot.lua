@@ -120,7 +120,7 @@ function update_party_members(check_only)
     if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT then
         for _, p_ind in pairs(OPTIONS.PARTY_MEMBERS) do
             member = party_data[p_ind]
-            if member.hpp < 70 and member.mob ~= nil then
+            if member.hpp < 61 and member.mob ~= nil and member.mob.is_npc == false then
                 PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
                 -- print(member.name .. tostring(member.hpp))
                 table.insert(TASK_QUEUE, {
