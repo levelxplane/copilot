@@ -55,7 +55,8 @@ local OPTIONS = T{
     WHITELIST = S{
         LEADER_NAME,
     },
-    PARTY_MEMBERS = {}
+    PARTY_MEMBERS = {},
+    AUTOHEAL = false,
 }
 
 TASK_QUEUE = T{}
@@ -151,10 +152,10 @@ function update_party_members(check_only)
         -- add more for other people to whitelist
     end
 
-    if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT then
+    if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT and OPTIONS.AUTOHEAL then
         for _, p_ind in pairs(OPTIONS.PARTY_MEMBERS) do
             member = party_data[p_ind]
-            if member.hpp < 61 and member.mob ~= nil then
+            if member.hpp < 61 and member.mob ~= nil and member.mob.is_npc == false then
                 PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
                 -- print(member.name .. tostring(member.hpp))
                 table.insert(TASK_QUEUE, {
@@ -653,7 +654,8 @@ windower.register_event('addon command',function (command, ...)
             luopan = command_args[1] or 'Geo-Frailty'
             print(string.format('Setting Luopan to %s.', luopan))
         end
-
+    elseif command == 'autoheal' then
+        if OPTIONS.AUTOHEAL then OPTIONS.AUTOHEAL = false else OPTIONS.AUTOHEAL = true end
         -- windower.send_command(string.format('input /ma "%s" ', luopan) .. '<me>')
     elseif command == 'po' then
         -- nui id == 597433
