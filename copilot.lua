@@ -6,6 +6,8 @@ _addon.command = 'copilot'
 string = require('string')
 sets = require('sets')
 tables = require('tables')
+require('packets')
+-- require('filters')
 -- loop = require('loop')
 
 files = require('files')
@@ -62,6 +64,38 @@ PREVIOUS_TASK = nil
 local next_frame = os.clock()
 local frame_check_period = 1
 local party_index = {}
+
+
+buffs = T{}
+buffs['whitelist'] = {}
+buffs['blacklist'] = {}
+
+
+windower.register_event('incoming chunk', function(id, data)
+    if id == 0x076 then
+        -- print(id)
+        -- print(type(id))
+        for  k = 0, 4 do
+            local id = data:unpack('I', k*48+5)
+            buffs['whitelist'][id] = {}
+			buffs['blacklist'][id] = {}
+
+            if id ~= 0 then
+                for i = 1, 32 do
+                    local buff = data:byte(k*48+5+16+i-1) + 256*( math.floor( data:byte(k*48+5+8+ math.floor((i-1)/4)) / 4^((i-1)%4) )%4) -- Credit: Byrth, GearSwap
+                    if buffs['whitelist'][id][i] ~= buff then
+                        buffs['whitelist'][id][i] = buff
+                    end
+					if buffs['blacklist'][id][i] ~= buff then
+                        buffs['blacklist'][id][i] = buff
+                    end
+                end
+            end
+        end
+    end
+
+end)
+
 windower.register_event('prerender', function()
     local now = os.clock()
 
@@ -104,7 +138,7 @@ function update_party_members(check_only)
         party_indexes = {}
 
         for _, p_ind in pairs({'p0', 'p1', 'p2', 'p3', 'p4', 'p5'}) do
-            if party_data[p_ind] and party_data[p_ind].mob ~= nil then
+            if party_data[p_ind] and party_data[p_ind].mob ~= nil and  party_data[p_ind].mob.is_npc == false then
                 table.insert(party_names, party_data[p_ind].name)
                 table.insert(party_indexes, p_ind)
             end
@@ -120,7 +154,7 @@ function update_party_members(check_only)
     if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT then
         for _, p_ind in pairs(OPTIONS.PARTY_MEMBERS) do
             member = party_data[p_ind]
-            if member.hpp < 70 and member.mob ~= nil then
+            if member.hpp < 61 and member.mob ~= nil then
                 PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
                 -- print(member.name .. tostring(member.hpp))
                 table.insert(TASK_QUEUE, {
@@ -364,9 +398,9 @@ function cast_spell(task_table)
         end
 
         if #TASK_QUEUE > 0 then
-            sleep((cast_time - 0.5) + 3)
+            sleep((cast_time) + 3)
         else
-            sleep(cast_time - 0.5)
+            sleep(cast_time)
         end
     elseif spell_resource ~= nil then
         print(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
