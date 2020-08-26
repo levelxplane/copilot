@@ -183,7 +183,7 @@ end
 
 windower.register_event('chat message', function(message, sender, mode, gm)
     player_info = windower.ffxi.get_player()
-    print (mode)
+    -- print (mode)
 
     if (mode == 3 or mode == 4) and dead(player_info.status) == false then
 
