@@ -414,7 +414,7 @@ function cast_spell(task_table)
         if #TASK_QUEUE > 0 then
             sleep(cast_time + 3)
         else
-            sleep(cast_time + 0.75)
+            sleep(cast_time + 1)
         end
     elseif spell_resource ~= nil then
         print(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
