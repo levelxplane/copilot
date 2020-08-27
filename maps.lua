@@ -47,6 +47,12 @@ SUPER_MAP = T{
         ["curse"] = {name="Cursna", geo_spell=false, offensive=false},
         ["cursna"] = {name="Cursna", geo_spell=false, offensive=false},
         ["erase"] = {name="Erase", geo_spell=false, offensive=false},
+
+        -- heals/buffs
+        ["protect"] = {name="Protectra", geo_spell=false, offensive=false, tiers={" III", " II", ""}},
+        ["shell"] = {name="Shellra", geo_spell=false, offensive=false, tiers={" III", " II", ""}},
+        ["stoneskin"] = {name="Stoneskin", geo_spell=false, offensive=false},
+        ["ss"] = {name="Stoneskin", geo_spell=false, offensive=false},
         ["refresh"] = {name="Refresh", geo_spell=false, offensive=false, tiers={" II", ""}},
         ["haste"] = {name="Haste", geo_spell=false, offensive=false, tiers={" II", ""}},
         ["cure"] = {name="Cure", geo_spell=false, offensive=false, tiers={" V", " IV", " III", " II", ""}},

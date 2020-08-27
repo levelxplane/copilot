@@ -145,6 +145,7 @@ function update_party_members()
         end
         OPTIONS.PARTY_MEMBERS = party_indexes
 
+        -- todo, better way to maintain whitelist while modifying party
         OPTIONS.WHITELIST = party_names
         table.insert(OPTIONS.WHITELIST, LEADER_NAME)
         -- add more for other people to whitelist
@@ -175,6 +176,7 @@ function check_party_status()
                     spell_details = tmp_details,
                     from_queue = true,
                 })
+                -- print('Adding 1(frame)', #TASK_QUEUE)
             -- elseif member.
             end
         end
@@ -257,6 +259,8 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         tmp_func()
     end
 
+    -- print('Adding(chat) 1', #TASK_QUEUE)
+
     -- while #TASK_QUEUE > 0 do
     --     -- print(#TASK_QUEUE)
     --     process_queue()
@@ -268,6 +272,7 @@ end)
 function process_queue()
     -- print(#TASK_QUEUE)
     if TOGGLES.BUSY == false and #TASK_QUEUE > 0 then
+        TOGGLES.BUSY = true
         affliction = debuffed()
         if affliction and TOGGLES.SUFFERING == false then
             TOGGLES.SUFFERING = true
@@ -289,6 +294,7 @@ function process_queue()
         if current_task.from_queue then
             PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER - 1
         end
+        -- print('Dequeuing', #TASK_QUEUE)
 
         if current_task.type == 'spell' then
             cast_spell(current_task)
@@ -387,7 +393,7 @@ function cast_spell(task_table)
 
         sleep(0.2)
 
-        TOGGLES.BUSY = true
+        TOGGLES.BUSY = true -- redundant
 
         if spell_details.offensive == true then
             if spell_tier ~= nil and task_table.after_ws then
@@ -411,10 +417,12 @@ function cast_spell(task_table)
             windower.send_command(string.format('input /ma "%1s" %2s', spell_name, target))
         end
 
-        if #TASK_QUEUE > 0 then
-            sleep(cast_time + 3)
+        -- print(string.format('sleeping for %1s', spell_name), #TASK_QUEUE)
+        -- sleep(cast_time + 2)
+        if #TASK_QUEUE == 0 then
+            sleep(cast_time)
         else
-            sleep(cast_time + 1)
+            sleep(cast_time + 3)
         end
     elseif spell_resource ~= nil then
         print(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
@@ -426,7 +434,7 @@ function cast_spell(task_table)
 
     -- print('exiting spell')
     if TOGGLES.ALWAYS_FOLLOW and #TASK_QUEUE == 0 then
-        TOGGLES.BUSY = false
+        -- TOGGLES.BUSY = false
         windower.send_command(string.format('ffo %s', LEADER_NAME))
     end
 end
@@ -455,7 +463,7 @@ function execute_leader_command(task_table)
 
         sub_command = task_args[2]
 
-        print(flag)
+        -- print(flag)
         if flag == 'mb' then
             if tonumber(sub_command) and (0 <= tonumber(sub_command) and tonumber(sub_command) < 6) then
                 if tonumber(sub_command) == 0 then
