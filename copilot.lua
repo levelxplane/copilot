@@ -176,7 +176,8 @@ function check_party_status()
                     spell_details = tmp_details,
                     from_queue = true,
                 })
-                -- print('Adding 1(frame)', #TASK_QUEUE)
+                print('Adding 1(frame)', 'cure', #TASK_QUEUE)
+                break -- exit queue if cure is added.
             -- elseif member.
             end
         end
@@ -259,7 +260,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         tmp_func()
     end
 
-    -- print('Adding(chat) 1', #TASK_QUEUE)
+    print('Adding(chat) 1', flag, #TASK_QUEUE)
 
     -- while #TASK_QUEUE > 0 do
     --     -- print(#TASK_QUEUE)
@@ -273,35 +274,38 @@ function process_queue()
     -- print(#TASK_QUEUE)
     if TOGGLES.BUSY == false and #TASK_QUEUE > 0 then
         TOGGLES.BUSY = true
-        affliction = debuffed()
-        if affliction and TOGGLES.SUFFERING == false then
-            TOGGLES.SUFFERING = true
-            windower.send_command(string.format('input /p I am suffering from %s.', affliction))
-            if TOGGLES.SUFFERING then
-                windower.send_command(string.format('input /item Remedy <me>'))
-                sleep(1)
+
+        while #TASK_QUEUE > 0 do
+            affliction = debuffed()
+            if affliction and TOGGLES.SUFFERING == false then
+                TOGGLES.SUFFERING = true
+                windower.send_command(string.format('input /p I am suffering from %s.', affliction))
+                if TOGGLES.SUFFERING then
+                    windower.send_command(string.format('input /item Remedy <me>'))
+                    sleep(1)
+                end
+                return
+            elseif affliction == nil and TOGGLES.SUFFERING == true then
+                windower.send_command('input /p I\'m cured!')
+                TOGGLES.SUFFERING = false
+            elseif TOGGLES.SUFFERING == true then
+                return
             end
-            return
-        elseif affliction == nil and TOGGLES.SUFFERING == true then
-            windower.send_command('input /p I\'m cured!')
-            TOGGLES.SUFFERING = false
-        elseif TOGGLES.SUFFERING == true then
-            return
-        end
 
-        current_task = table.remove(TASK_QUEUE, 1)
+            current_task = table.remove(TASK_QUEUE, 1)
 
-        if current_task.from_queue then
-            PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER - 1
-        end
-        -- print('Dequeuing', #TASK_QUEUE)
+            if current_task.from_queue then
+                PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER - 1
+            end
+            print('Dequeuing', current_task.flag, #TASK_QUEUE)
 
-        if current_task.type == 'spell' then
-            cast_spell(current_task)
-        elseif current_task.type == 'command' then
-            execute_leader_command(current_task)
-        else
-            -- stuff
+            if current_task.type == 'spell' then
+                cast_spell(current_task)
+            elseif current_task.type == 'command' then
+                execute_leader_command(current_task)
+            else
+                -- stuff
+            end
         end
 
         TOGGLES.BUSY = false
@@ -419,9 +423,14 @@ function cast_spell(task_table)
 
         -- print(string.format('sleeping for %1s', spell_name), #TASK_QUEUE)
         -- sleep(cast_time + 2)
-        if #TASK_QUEUE == 0 then
+        if #TASK_QUEUE == 0 and task_table.from_queue ~= nil then
+            print('no remaining tasks')
             sleep(cast_time)
+        elseif #TASK_QUEUE == 0 and task_table.from_queue == nil then -- try to handle non-queued spell delay
+            print('no remaining tasks(not queue)')
+            sleep(cast_time + 2)
         else
+            print(#TASK_QUEUE, 'remaining tasks') -- queued spells have 3 second delay
             sleep(cast_time + 3)
         end
     elseif spell_resource ~= nil then
