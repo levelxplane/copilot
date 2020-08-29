@@ -215,6 +215,15 @@ windower.register_event('chat message', function(message, sender, mode, gm)
 
     -- print(type(CUSTOM_FLAG_MAP[flag]))
     if mode == 4 and SPELL_FLAG_MAP[flag] and party_only_check then
+        spell_info = SPELL_FLAG_MAP[flag]
+        if spell_info.whm_only == true then
+            if (player_info.sub_job == 'WHM' or player_info.main_job == 'WHM') then
+                -- pass
+            else
+                print ('no whm main or job to cast -nas')
+                return
+            end
+        end
         table.insert(TASK_QUEUE, {
             flag = flag,
             args = args,
@@ -260,7 +269,9 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         tmp_func()
     end
 
-    print('Adding(chat) 1', flag, #TASK_QUEUE)
+    if #TASK_QUEUE > 0 then
+        print('Adding(chat) 1', flag, #TASK_QUEUE)
+    end
 
     -- while #TASK_QUEUE > 0 do
     --     -- print(#TASK_QUEUE)
