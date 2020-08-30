@@ -27,7 +27,7 @@ local TOGGLES = T{
     SUFFERING = false,  -- if poison, stunned, paralyzed, etc,
 
     ALWAYS_FOLLOW = true, -- if using ffo, always follow or not.
-    MAGICBURST = true,  -- try to MB if enabled
+    MAGICBURST = false,  -- try to MB if enabled
     PARTY_ONLY = true,
 }
 local MB_COUNTER = 1
@@ -176,7 +176,7 @@ function check_party_status()
                     spell_details = tmp_details,
                     from_queue = true,
                 })
-                print('Adding 1(frame)', 'cure', #TASK_QUEUE)
+                -- print('Adding 1(frame)', 'cure', #TASK_QUEUE)
                 break -- exit queue if cure is added.
             -- elseif member.
             end
@@ -271,7 +271,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
     end
 
     if #TASK_QUEUE > 0 then
-        print('Adding(chat) 1', flag, #TASK_QUEUE)
+        -- print('Adding(chat) 1', flag, #TASK_QUEUE)
     end
 
     -- while #TASK_QUEUE > 0 do
@@ -309,7 +309,7 @@ function process_queue()
             if current_task.from_queue then
                 PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER - 1
             end
-            print('Dequeuing', current_task.flag, #TASK_QUEUE)
+            -- print('Dequeuing', current_task.flag, #TASK_QUEUE)
 
             if current_task.type == 'spell' then
                 cast_spell(current_task)
@@ -436,13 +436,13 @@ function cast_spell(task_table)
         -- print(string.format('sleeping for %1s', spell_name), #TASK_QUEUE)
         -- sleep(cast_time + 2)
         if #TASK_QUEUE == 0 and task_table.from_queue ~= nil then
-            print('no remaining tasks')
+            -- print('no remaining tasks')
             sleep(cast_time)
         elseif #TASK_QUEUE == 0 and task_table.from_queue == nil then -- try to handle non-queued spell delay
-            print('no remaining tasks(not queue)')
+            -- print('no remaining tasks(not queue)')
             sleep(cast_time + 2)
         else
-            print(#TASK_QUEUE, 'remaining tasks') -- queued spells have 3 second delay
+            -- print(#TASK_QUEUE, 'remaining tasks') -- queued spells have 3 second delay
             sleep(cast_time + 3)
         end
     elseif spell_resource ~= nil then
@@ -567,10 +567,9 @@ function execute_leader_command(task_table)
 
                 task_table.flag = sub_command
                 task_table.spell_details = details
-
                 if spell_details then
                     windower.send_command('input /ja "Entrust" <me>')
-                    sleep(1)
+                    sleep(2)
                     cast_spell(task_table)
                 end
             end
@@ -594,14 +593,14 @@ function execute_leader_command(task_table)
 
                 if details then
                     windower.send_command('input /ja "Blaze of Glory" <me>')
-                    sleep(1)
+                    sleep(1.5)
                     cast_spell(task_table)
                     windower.send_command('input /ja "Ecliptic Attrition" <me>')
-                    sleep(1)
+                    sleep(1.5)
                     windower.send_command('input /ja "Life Cycle" <me>')
-                    sleep(1)
+                    sleep(1.5)
                     windower.send_command('input /ja "Dematerialize" <me>')
-                    sleep(1)
+                    sleep(1.5)
                 end
             end
 
