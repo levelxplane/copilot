@@ -162,10 +162,10 @@ function check_party_status()
     if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT and OPTIONS.AUTOHEAL then
         for _, p_ind in pairs(OPTIONS.PARTY_MEMBERS) do
             member = party_data[p_ind]
-            if member.hpp < 70 and member.mob ~= nil and member.mob.is_npc == false then
+            if member.mob ~= nil and member.mob.is_npc == false and member.hpp ~= 0 and member.hpp < 60 then
                 PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
                 -- print(member.name .. tostring(member.hpp))
-                tmp_details = SPELL_FLAG_MAP['cure']
+                local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
                 tmp_details.tiers = {" III", " II", ""}
                 table.insert(TASK_QUEUE, {
                     flag = 'cure',
@@ -189,8 +189,9 @@ windower.register_event('chat message', function(message, sender, mode, gm)
     -- print (mode)
 
     if (mode == 3 or mode == 4) and dead(player_info.status) == false then
-
     else
+        -- clear queue if dead
+        TASK_QUEUE = T{}
         return
     end
     update_party_members()
@@ -343,10 +344,10 @@ task_table_structure = {
 
 local TIER_DELAY = T{
     [''] = 5,
-    [' II'] = 5,
-    [' III'] = 3,
-    [' IV'] = 3,
-    [' V'] = 2,
+    [' II'] = 4,
+    [' III'] = 2,
+    [' IV'] = 1,
+    [' V'] = 1,
 }
 
 function cast_spell(task_table)
