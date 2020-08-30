@@ -529,7 +529,7 @@ function execute_leader_command(task_table)
             windower.send_command(string.format('ffo %s', LEADER_NAME))
             TOGGLES.ALWAYS_FOLLOW = true
 
-            if sub_command and 0 < tonumber(sub_command) and tonumber(sub_command) < 8 then
+            if sub_command and 0 < tonumber(sub_command) and tonumber(sub_command) < 11 then
                 windower.send_command(string.format('ffo min %s', sub_command))
                 print(string.format('ffo min %s', sub_command))
             end
@@ -537,6 +537,18 @@ function execute_leader_command(task_table)
         elseif flag == 'stop' then
             windower.send_command('ffo stop')
             TOGGLES.ALWAYS_FOLLOW = false
+
+        elseif flag == 'autoheal' then
+            if OPTIONS.AUTOHEAL then OPTIONS.AUTOHEAL = false else OPTIONS.AUTOHEAL = true end
+            if OPTIONS.AUTOHEAL then
+                print('will autoheal')
+            end
+
+        elseif flag == 'po' then
+            if TOGGLES.PARTY_ONLY then TOGGLES.PARTY_ONLY = false else TOGGLES.PARTY_ONLY = true end
+            if OPTIONS.PARTY_ONLY then
+                print('only party')
+            end
 
         elseif flag == 'dimmer' then
             windower.send_command('dimmer')

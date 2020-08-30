@@ -129,6 +129,7 @@ SUPER_MAP = T{
         -- ffo and other commands
         ["follow"] = {leader_only=true},
         ["stop"] = {leader_only=true},
+        ["po"] = {leader_only=true},
         ["dimmer"] = {leader_only=true},
         ["home"] = {leader_only=true},
         ["mount"] = {leader_only=true},
