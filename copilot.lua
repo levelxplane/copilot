@@ -16,11 +16,11 @@ resources = require('resources')
 
 MAPS = require('maps')
 
-
 --------------------------------- Personal Config ---------------------------------------
 local LEADER_NAME = 'Berlioz' -- character to follow/assist. basically the actual person playing.
 local MOUNT = 'Tulfaire'
 
+local TELL_MODE = '/t ' .. LEADER_NAME
 
 local TOGGLES = T{
     BUSY = false,  -- Probably not needed anymore. determine if needed
@@ -215,7 +215,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
     party_only_check = TOGGLES.PARTY_ONLY == false or (TOGGLES.PARTY_ONLY and listContains(party_names, sender))
 
     -- print(type(CUSTOM_FLAG_MAP[flag]))
-    if mode == 4 and SPELL_FLAG_MAP[flag] and party_only_check then
+    if (mode == 4 or mode == 3) and SPELL_FLAG_MAP[flag] and party_only_check then
         spell_info = SPELL_FLAG_MAP[flag]
         if spell_info.whm_only == true then
             if (player_info.sub_job == 'WHM' or player_info.main_job == 'WHM') then
@@ -282,6 +282,8 @@ windower.register_event('chat message', function(message, sender, mode, gm)
     -- end
 end)
 
+
+STATUS_ALERT = true
 function process_queue()
     -- print(#TASK_QUEUE)
     if TOGGLES.BUSY == false and #TASK_QUEUE > 0 then
@@ -291,19 +293,25 @@ function process_queue()
             affliction = debuffed()
             if affliction and TOGGLES.SUFFERING == false then
                 TOGGLES.SUFFERING = true
-                windower.send_command(string.format('input /p I am suffering from %s.', affliction))
+
+                if STATUS_ALERT then
+                    windower.send_command(string.format('input %1s I am suffering from %2s.', TELL_MODE, affliction))
+                    STATUS_ALERT = false
+                end
                 if TOGGLES.SUFFERING then
                     windower.send_command(string.format('input /item Remedy <me>'))
                     sleep(1)
+                    TOGGLES.SUFFERING = false
                 end
                 return
             elseif affliction == nil and TOGGLES.SUFFERING == true then
-                windower.send_command('input /p I\'m cured!')
+                windower.send_command(string.format('input %1s I\'m cured!', TELL_MODE))
                 TOGGLES.SUFFERING = false
             elseif TOGGLES.SUFFERING == true then
                 return
             end
 
+            STATUS_ALERT = true
             current_task = table.remove(TASK_QUEUE, 1)
 
             if current_task.from_queue then
@@ -419,7 +427,7 @@ function cast_spell(task_table)
             end
             windower.send_command(string.format('input /assist %s', LEADER_NAME))
             sleep(delay)
-            windower.send_command(string.format('input /p Casting "%s" on <t>!', spell_name))
+            windower.send_command(string.format('input %1s Casting "%s" on <t>!', TELL_MODE, spell_name))
             windower.send_command(string.format('input /ma "%s" <t>', spell_name))
             windower.send_command('input /lockon')
         else
@@ -429,7 +437,7 @@ function cast_spell(task_table)
                 target = task_table.sender
             end
 
-            windower.send_command(string.format('input /p Casting "%1s" on %2s!', spell_name, target))
+            windower.send_command(string.format('input %1s Casting "%2s" on %3s!', TELL_MODE, spell_name, target))
             windower.send_command(string.format('input /ma "%1s" %2s', spell_name, target))
         end
 
@@ -448,7 +456,7 @@ function cast_spell(task_table)
     elseif spell_resource ~= nil then
         print(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
     elseif spell_resource.mp_cost > player_info.vitals.mp then
-        windower.send_command(string.format('input /p Out of MP :c'))
+        windower.send_command(string.format('input %1s Out of MP :c', TELL_MODE))
     else
         print('other error found during spell lookup')
     end
@@ -562,6 +570,13 @@ function execute_leader_command(task_table)
         elseif flag == 'dismount' then
             windower.send_command('input /dismount')
 
+        elseif flag == 'tm' then
+            if TELL_MODE == '/p' then
+                TELL_MODE = '/t ' .. LEADER_NAME
+            else
+                TELL_MODE = '/p'
+            end
+
         elseif flag == 'ind' then
             if task_args and sub_command then
                 details = INDI_FLAG_MAP[sub_command]
@@ -632,7 +647,7 @@ function execute_leader_command(task_table)
         elseif flag == 'sic' then
             windower.send_command(string.format('input /assist %s', LEADER_NAME))
             sleep(1)
-            windower.send_command('input /p Attacking on <t>!')
+            windower.send_command(string.format('input %1s Attacking <t>!', TELL_MODE))
             windower.send_command('input /pet Assault <t>')
             windower.send_command('input /lockon')
         elseif flag == 'release' then
@@ -722,6 +737,12 @@ windower.register_event('addon command',function (command, ...)
         if TOGGLES.PARTY_ONLY then TOGGLES.PARTY_ONLY = false else TOGGLES.PARTY_ONLY = true end
         if OPTIONS.PARTY_ONLY then
             print('only party')
+        end
+    elseif command == 'tm' then
+        if TELL_MODE == '/p' then
+            TELL_MODE = '/t ' .. LEADER_NAME
+        else
+            TELL_MODE = '/p'
         end
     else
         display_help()

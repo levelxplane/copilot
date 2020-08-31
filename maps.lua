@@ -153,6 +153,7 @@ SUPER_MAP = T{
         -- pew pew
         -- figure this shit out
         ["mb"] = {leader_only=true},
+        ["tm"] = {leader_only=true},
     },
 }
 
