@@ -129,9 +129,7 @@ local PARTY_QUEUE_COUNTER = 0
 function update_party_members()
 
     party_data = windower.ffxi.get_party()
-    if party_data ==  nil then
-        return
-    end
+    if party_data ==  nil then return end
 
     if party_data.party1_count ~= #OPTIONS.PARTY_MEMBERS then
         party_names = {}
@@ -159,6 +157,7 @@ function check_party_status()
      end
 
     party_data = windower.ffxi.get_party()
+    if party_data == nil then return end
     if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT and OPTIONS.AUTOHEAL then
         for _, p_ind in pairs(OPTIONS.PARTY_MEMBERS) do
             member = party_data[p_ind]
