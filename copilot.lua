@@ -377,7 +377,7 @@ function cast_spell(task_table)
     -- if task_table.after_ws then
     --     print('from ws')
     -- end
-    if OPTIONS.ELEMENTAL_TIER_LIMIT and listContains({'aero', 'fire', 'blizzard', 'thunder', 'stone', 'water'}, task_table.flag) then
+    if OPTIONS.ELEMENTAL_TIER_LIMIT and listContains({'aero', 'fire', 'blizzard', 'bliz', 'thunder', 'stone', 'water'}, task_table.flag) then
         tmp_tiers = OPTIONS.ELEMENTAL_TIER_LIMIT
     else
         tmp_tiers = spell_details.tiers
