@@ -452,10 +452,10 @@ function cast_spell(task_table)
             -- print(#TASK_QUEUE, 'remaining tasks') -- queued spells have 3 second delay
             sleep(cast_time + 3)
         end
+    elseif spell_resource and (spell_resource.mp_cost > player_info.vitals.mp) then
+        windower.send_command(string.format('input %1s Out of MP :c', TELL_MODE))
     elseif spell_resource ~= nil then
         print(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
-    elseif spell_resource.mp_cost > player_info.vitals.mp then
-        windower.send_command(string.format('input %1s Out of MP :c', TELL_MODE))
     else
         print('other error found during spell lookup')
     end
