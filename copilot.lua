@@ -55,11 +55,13 @@ local OPTIONS = T{
     WHITELIST = S{
         LEADER_NAME,
     },
-    PARTY_MEMBERS = {},
+    PARTY_IDS = S{},
     AUTOHEAL = true,
     IN_COMBAT = false,
     TELL_MODE = '/t ' .. LEADER_NAME
 }
+
+local PARTY_IDS = S{}
 
 TASK_QUEUE = T{}
 PREVIOUS_TASK = nil
@@ -112,29 +114,25 @@ end)
 local PARTY_QUEUE_LIMIT = 2 -- limit number of things to be queued
 local PARTY_QUEUE_COUNTER = 0
 
-function update_party_members()
+function update_party_member()
     print('updt_pt')
 
+    local tmp_party_indexes = S{}
+
     party_data = windower.ffxi.get_party()
-    if party_data ==  nil then return end
 
-    if party_data.party1_count ~= #OPTIONS.PARTY_MEMBERS then
-        party_names = {}
-        party_indexes = {}
-
-        for _, p_ind in pairs({'p0', 'p1', 'p2', 'p3', 'p4', 'p5'}) do
-            if party_data[p_ind] and party_data[p_ind].mob ~= nil and  party_data[p_ind].mob.is_npc == false then
-                table.insert(party_names, party_data[p_ind].name)
-                table.insert(party_indexes, p_ind)
-            end
+    for _, p_ind in pairs({'p0', 'p1', 'p2', 'p3', 'p4', 'p5'}) do
+        if party_data[p_ind] and party_data[p_ind].mob ~= nil and party_data[p_ind].mob.is_npc == false then
+            table.insert(party_names, party_data[p_ind].name)
+            table.insert(party_indexes, p_ind)
         end
-        OPTIONS.PARTY_MEMBERS = party_indexes
-
-        -- todo, better way to maintain whitelist while modifying party
-        OPTIONS.WHITELIST = party_names
-        table.insert(OPTIONS.WHITELIST, LEADER_NAME)
-        -- add more for other people to whitelist
     end
+    OPTIONS.PARTY_MEMBERS = party_indexes
+
+    -- todo, better way to maintain whitelist while modifying party
+    OPTIONS.WHITELIST = party_names
+    table.insert(OPTIONS.WHITELIST, LEADER_NAME)
+    -- add more for other people to whitelist
 end
 
 function check_party_status()
@@ -148,30 +146,8 @@ function check_party_status()
         print ('ah on')
     end
     local party_data = windower.ffxi.get_party()
-    if party_data == nil then return end
-    if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT and OPTIONS.AUTOHEAL then
-        for _, p_ind in pairs(OPTIONS.PARTY_MEMBERS) do
-            member = party_data[p_ind]
-            if (member and member.mob ~= nil and member.mob.is_npc == false) and member.hpp ~= 0 and member.hpp < 60 then
-                PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
-                -- print(member.name .. tostring(member.hpp))
-                local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
-                tmp_details.tiers = {" III", " II", ""}
-                table.insert(TASK_QUEUE, {
-                    flag = 'cure',
-                    args = {'cure', member.name},
-                    sender = member.name,
-                    target = member.name,
-                    type = 'spell',
-                    spell_details = tmp_details,
-                    from_queue = true,
-                })
-                -- print('Adding 1(frame)', 'cure', #TASK_QUEUE)
-                break -- exit queue if cure is added.
-            -- elseif member.
-            end
-        end
-    end
+
+
 end
 
 function check_geo()
@@ -181,7 +157,7 @@ function check_geo()
         pet = windower.ffxi.get_mob_by_index(
             windower.ffxi.get_mob_by_id(OPTIONS.PLAYER_ID).pet_index
         )
-        if pet and pet.hpp == 0 then
+        if pet == nil or (pet and pet.hpp == 0) then
             table.insert(TASK_QUEUE, OPTIONS.FORCE_LUOPAN)
         end
     end
@@ -198,7 +174,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         TASK_QUEUE = T{}
         return
     end
-    coroutine.schedule(update_party_members, 0)
+    -- coroutine.schedule(update_party_members, 0)
     party_names = OPTIONS.WHITELIST
     -- from party
     args = split(message)
@@ -332,8 +308,9 @@ function process_queue()
         TOGGLES.BUSY = false
     end
 
-    -- if OPTIONS.FORCE_INDI and now > OPTIONS.FORCE_INDI_TIMER then
-    --     check_geo()
+    if OPTIONS.FORCE_INDI and now > OPTIONS.FORCE_INDI_TIMER then
+        check_geo()
+    end
     -- else
 --     check_party_status()
     -- end
