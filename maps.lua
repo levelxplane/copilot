@@ -152,8 +152,9 @@ SUPER_MAP = T{
 
         -- pew pew
         -- figure this shit out
-        ["mb"] = {leader_only=true},
-        ["tm"] = {leader_only=true},
+        ["mb"] = {leader_only=true}, -- magicburst mode
+        ["tm"] = {leader_only=true}, -- tell mode
+        ["ag"] = {leader_only=true}, -- auto geo/indi spell
     },
 }
 
