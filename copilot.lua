@@ -117,21 +117,19 @@ local PARTY_QUEUE_COUNTER = 0
 function update_party_member()
     print('updt_pt')
 
-    local tmp_party_indexes = S{}
+    local tmp_party_ids = {}
+    local tmp_party_names = {}
 
     party_data = windower.ffxi.get_party()
 
     for _, p_ind in pairs({'p0', 'p1', 'p2', 'p3', 'p4', 'p5'}) do
-        if party_data[p_ind] and party_data[p_ind].mob ~= nil and party_data[p_ind].mob.is_npc == false then
-            table.insert(party_names, party_data[p_ind].name)
-            table.insert(party_indexes, p_ind)
+        member = party_data[p_ind]
+        if member and member.mob ~= nil and member.mob.is_npc == false then
+            table.insert(tmp_party_names, member.name)
         end
     end
-    OPTIONS.PARTY_MEMBERS = party_indexes
 
-    -- todo, better way to maintain whitelist while modifying party
-    OPTIONS.WHITELIST = party_names
-    table.insert(OPTIONS.WHITELIST, LEADER_NAME)
+    OPTIONS.WHITELIST:union(tmp_party_names)
     -- add more for other people to whitelist
 end
 
@@ -146,6 +144,13 @@ function check_party_status()
         print ('ah on')
     end
     local party_data = windower.ffxi.get_party()
+
+    for _, member in pairs(party_data) do
+        if listContains(OPTIONS.WHITELIST, member.name) then
+            if member.hpp < 60 then
+            end
+        end
+    end
 
 
 end
