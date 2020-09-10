@@ -55,16 +55,13 @@ local OPTIONS = T{
     WHITELIST = S{
         LEADER_NAME,
     },
-    PARTY_IDS = S{},
+    PARTY_INDEXES = {'p0', 'p1', 'p2', 'p3', 'p4', 'p5'},
     AUTOHEAL = true,
     IN_COMBAT = false,
     TELL_MODE = '/t ' .. LEADER_NAME
 }
 
-local PARTY_IDS = S{}
-
 TASK_QUEUE = T{}
-PREVIOUS_TASK = nil
 
 local next_frame = os.clock()
 local frame_check_period = 1
@@ -122,7 +119,7 @@ function update_party_member()
 
     party_data = windower.ffxi.get_party()
 
-    for _, p_ind in pairs({'p0', 'p1', 'p2', 'p3', 'p4', 'p5'}) do
+    for _, p_ind in pairs(OPTIONS.PARTY_INDEXES) do
         member = party_data[p_ind]
         if member and member.mob ~= nil and member.mob.is_npc == false then
             table.insert(tmp_party_names, member.name)
@@ -559,7 +556,14 @@ function execute_leader_command(task_table)
         elseif flag == 'po' then
             if TOGGLES.PARTY_ONLY then TOGGLES.PARTY_ONLY = false else TOGGLES.PARTY_ONLY = true end
             if OPTIONS.PARTY_ONLY then
+                OPTIONS.PARTY_INDEXES = {'p0', 'p1', 'p2', 'p3', 'p4', 'p5'},
                 print('only party')
+            else
+                OPTIONS.PARTY_INDEXES = {
+                    'p0', 'p1', 'p2', 'p3', 'p4', 'p5',
+                    'a10', 'a11', 'a12', 'a13', 'a14', 'a15',
+                    'a20', 'a21', 'a22', 'a23', 'a24', 'a25',
+                }
             end
 
         elseif flag == 'dimmer' then
