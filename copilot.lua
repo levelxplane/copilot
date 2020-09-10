@@ -148,6 +148,21 @@ function check_party_status()
     for _, member in pairs(party_data) do
         if listContains(OPTIONS.WHITELIST, member.name) then
             if member.hpp < 60 then
+                PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
+                -- print(member.name .. tostring(member.hpp))
+                local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
+                tmp_details.tiers = {" III", " II", ""}
+                table.insert(TASK_QUEUE, {
+                    flag = 'cure',
+                    args = {'cure', member.name},
+                    sender = member.name,
+                    target = member.name,
+                    type = 'spell',
+                    spell_details = tmp_details,
+                    from_queue = true,
+                })
+                -- print('Adding 1(frame)', 'cure', #TASK_QUEUE)
+                break -- exit queue if cure is added.
             end
         end
     end
@@ -179,7 +194,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         TASK_QUEUE = T{}
         return
     end
-    -- coroutine.schedule(update_party_members, 0)
+    -- coroutine.schedule(update_party_members, 0) -- do we really need to check on every party message?
     party_names = OPTIONS.WHITELIST
     -- from party
     args = split(message)
@@ -315,6 +330,8 @@ function process_queue()
 
     if OPTIONS.FORCE_INDI and now > OPTIONS.FORCE_INDI_TIMER then
         check_geo()
+    else
+        coroutine.schedule(check_party_status, 0)
     end
     -- else
 --     check_party_status()
@@ -565,6 +582,7 @@ function execute_leader_command(task_table)
             end
 
         elseif flag == 'ind' then
+            coroutine.schedule(update_party_members, 0)
             if task_args and sub_command then
                 OPTIONS.FORCE_INDI = table.copy(task_table)
 
