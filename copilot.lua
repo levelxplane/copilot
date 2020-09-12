@@ -52,14 +52,13 @@ local OPTIONS = T{
     FORCE_ELEMENT = nil, -- which elemental spell to use by default
     ELEMENTAL_TIER_LIMIT = {' III', ' II', ''},
     PLAYER_ID = windower.ffxi.get_player().id, -- ID of character using this script.
-    WHITELIST = S{
-        LEADER_NAME,
-    },
+    WHITELIST = S{},
     PARTY_INDEXES = {'p0', 'p1', 'p2', 'p3', 'p4', 'p5'},
     AUTOHEAL = true,
     IN_COMBAT = false,
     TELL_MODE = '/t ' .. LEADER_NAME
 }
+OPTIONS.WHITELIST[LEADER_NAME] = true
 
 TASK_QUEUE = T{}
 
@@ -84,7 +83,6 @@ windower.register_event('prerender', function()
     coroutine.schedule(process_queue, 0)
     --
     -- print (#TASK_QUEUE)
-    -- print (#OPTIONS.PARTY_MEMBERS)
 end)
 
 
@@ -109,9 +107,9 @@ end)
 
 
 local PARTY_QUEUE_LIMIT = 2 -- limit number of things to be queued
-local PARTY_QUEUE_COUNTER = 0
+local
 
-function update_party_member()
+function update_party_members()
     print('updt_pt')
 
     local tmp_party_ids = {}
@@ -122,33 +120,35 @@ function update_party_member()
     for _, p_ind in pairs(OPTIONS.PARTY_INDEXES) do
         member = party_data[p_ind]
         if member and member.mob ~= nil and member.mob.is_npc == false then
-            table.insert(tmp_party_names, member.name)
+            OPTIONS.WHITELIST[member.name] = true
         end
     end
-
-    OPTIONS.WHITELIST:union(tmp_party_names)
+    -- table:union(OPTIONS.WHITELIST, tmp_party_names)
     -- add more for other people to whitelist
 end
 
+local HASTE_TIMER = 0
 function check_party_status()
     print('pt_stat')
-    if OPTIONS.IN_COMBAT == false then
+
+    if (OPTIONS.IN_COMBAT == false) or (#TASK_QUEUE > PARTY_QUEUE_LIMIT) then
         -- print('not in combat')
         return
     end
 
-    if OPTIONS.AUTOHEAL then
-        print ('ah on')
-    end
+    local now = os.clock()
     local party_data = windower.ffxi.get_party()
+    for i, member in pairs(party_data) do
+        if type(member) == 'table' and OPTIONS.WHITELIST[member.name] then
+            -- print(member.name, member.hpp)
+            print('before', #TASK_QUEUE)
+            if member.hpp < 80 then
+                print(member.name)
+                -- print('found cure')
 
-    for _, member in pairs(party_data) do
-        if listContains(OPTIONS.WHITELIST, member.name) then
-            if member.hpp < 60 then
-                PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
                 -- print(member.name .. tostring(member.hpp))
                 local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
-                tmp_details.tiers = {" III", " II", ""}
+                -- tmp_details.tiers = {" III", " II", ""}
                 table.insert(TASK_QUEUE, {
                     flag = 'cure',
                     args = {'cure', member.name},
@@ -159,12 +159,22 @@ function check_party_status()
                     from_queue = true,
                 })
                 -- print('Adding 1(frame)', 'cure', #TASK_QUEUE)
-                break -- exit queue if cure is added.
+            elseif member.name == LEADER_NAME and member.hpp > 90 and now > HASTE_TIMER then
+                HASTE_TIMER = now + 120
+                table.insert(TASK_QUEUE, {
+                    flag = 'haste',
+                    args = {'haste', member.name},
+                    sender = member.name,
+                    target = member.name,
+                    type = 'spell',
+                    spell_details = SPELL_FLAG_MAP['haste'],
+                    from_queue = true,
+                })
+                -- break
             end
         end
+        print('after', #TASK_QUEUE)
     end
-
-
 end
 
 function check_geo()
@@ -192,7 +202,9 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         return
     end
     -- coroutine.schedule(update_party_members, 0) -- do we really need to check on every party message?
-    party_names = OPTIONS.WHITELIST
+
+    update_party_members()
+    -- print(#TASK_QUEUE)
     -- from party
     args = split(message)
 
@@ -209,10 +221,14 @@ windower.register_event('chat message', function(message, sender, mode, gm)
     -- do not do
     -- PARTY_ONLY = True and SEnder Not in Party
 
-    party_only_check = TOGGLES.PARTY_ONLY == false or (TOGGLES.PARTY_ONLY and listContains(party_names, sender))
+    -- print(TOGGLES.PARTY_ONLY, sender, OPTIONS.WHITELIST[sender] )
+    party_only_check = TOGGLES.PARTY_ONLY == false or (TOGGLES.PARTY_ONLY and OPTIONS.WHITELIST[sender])
+
+    -- print('check', party_only_check)
 
     -- print(type(CUSTOM_FLAG_MAP[flag]))
     if (mode == 4 or mode == 3) and SPELL_FLAG_MAP[flag] and party_only_check then
+        print('lol')
         spell_info = SPELL_FLAG_MAP[flag]
         if spell_info.whm_only == true then
             if (player_info.sub_job == 'WHM' or player_info.main_job == 'WHM') then
@@ -221,6 +237,10 @@ windower.register_event('chat message', function(message, sender, mode, gm)
                 print ('no whm main or job to cast -nas')
                 return
             end
+        end
+        if flag == 'haste' then
+            local now = os.clock()
+            HASTE_TIMER = now + 120
         end
         table.insert(TASK_QUEUE, {
             flag = flag,
@@ -273,6 +293,10 @@ STATUS_ALERT = true
 function process_queue()
     print('proc queue')
     local now = os.clock()
+
+    -- for i, v in pairs(OPTIONS.WHITELIST) do
+    --     print(i, v)
+    -- end
     -- print(#TASK_QUEUE)
     if TOGGLES.BUSY == false and #TASK_QUEUE > 0 then
         TOGGLES.BUSY = true
@@ -306,10 +330,6 @@ function process_queue()
             if current_task.spell_details then
                 print(current_task.spell_details.name)
             end
-
-            if current_task.from_queue then
-                PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER - 1
-            end
             -- print('Dequeuing', current_task.flag, #TASK_QUEUE)
 
             if current_task.type == 'spell' then
@@ -328,11 +348,8 @@ function process_queue()
     if OPTIONS.FORCE_INDI and now > OPTIONS.FORCE_INDI_TIMER then
         check_geo()
     else
-        coroutine.schedule(check_party_status, 0)
+        check_party_status()
     end
-    -- else
---     check_party_status()
-    -- end
 end
 -- process_queue:loop(10)
 
@@ -586,8 +603,12 @@ function execute_leader_command(task_table)
             end
 
         elseif flag == 'ind' then
-            coroutine.schedule(update_party_members, 0)
-            if task_args and sub_command then
+
+            -- for i, v in pairs(task_table) do
+            --     print(i, v)
+            -- end
+            print(sub_command)
+            if task_table and sub_command then
                 OPTIONS.FORCE_INDI = table.copy(task_table)
 
                 local now = os.clock()
