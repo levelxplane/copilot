@@ -331,7 +331,7 @@ function process_queue()
     else
         TOGGLES.BUSY = false
     end
-    check_party_status()
+    -- check_party_status()
 end
 -- process_queue:loop(10)
 

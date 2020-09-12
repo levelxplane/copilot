@@ -106,6 +106,7 @@ SUPER_MAP = T{
         ["regen"] = {name="Indi-Regen", geo_spell=true, offensive=false},
         ["refresh"] = {name="Indi-Refresh", geo_spell=true, offensive=false},
         ["haste"] = {name="Indi-Haste", geo_spell=true, offensive=false},
+        ["haaaste"] = {name="Indi-Haste", geo_spell=true, offensive=false},
         ["eva"] = {name="Indi-Voidance", geo_spell=true, offensive=false},
         ["acc"] = {name="Indi-Precision", geo_spell=true, offensive=false},
         ["meva"] = {name="Indi-Attunement", geo_spell=true, offensive=false},
