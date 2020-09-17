@@ -20,6 +20,8 @@ MAPS = require('maps')
 local LEADER_NAME = 'Berlioz' -- character to follow/assist. basically the actual person playing.
 local MOUNT = 'Tulfaire'
 
+local TELL_MODE = '/t ' .. LEADER_NAME
+
 local TOGGLES = T{
     BUSY = false,  -- Probably not needed anymore. determine if needed
     SUFFERING = false,  -- if poison, stunned, paralyzed, etc,
@@ -27,7 +29,6 @@ local TOGGLES = T{
     ALWAYS_FOLLOW = true, -- if using ffo, always follow or not.
     MAGICBURST = false,  -- try to MB if enabled
     PARTY_ONLY = true,
-    AUTO_GEO = true,
 }
 local MB_COUNTER = 1
 local NUKE_TIER_LIMIT = 5
@@ -48,19 +49,19 @@ local OPTIONS = T{
     CURRENT_TARGET = nil, -- current target id
     FORCE_LUOPAN = nil, -- which Luopan to use by default
     FORCE_INDI = nil,  -- which indi to use by default
-    FORCE_INDI_TIMER = 240,
     FORCE_ELEMENT = nil, -- which elemental spell to use by default
     ELEMENTAL_TIER_LIMIT = {' III', ' II', ''},
     PLAYER_ID = windower.ffxi.get_player().id, -- ID of character using this script.
-    WHITELIST = S{},
-    PARTY_INDEXES = {'p0', 'p1', 'p2', 'p3', 'p4', 'p5'},
+    WHITELIST = S{
+        LEADER_NAME,
+    },
+    PARTY_MEMBERS = {},
     AUTOHEAL = true,
     IN_COMBAT = false,
-    TELL_MODE = '/t ' .. LEADER_NAME
 }
-OPTIONS.WHITELIST[LEADER_NAME] = true
 
 TASK_QUEUE = T{}
+PREVIOUS_TASK = nil
 
 local next_frame = os.clock()
 local frame_check_period = 1
@@ -71,8 +72,38 @@ buffs = T{}
 buffs['whitelist'] = {}
 buffs['blacklist'] = {}
 
+
+-- windower.register_event('incoming chunk', function(id, data)
+--     if id == 0x076 then
+--         -- print(id)
+--         -- print(type(id))
+--         for  k = 0, 4 do
+--             local id = data:unpack('I', k*48+5)
+--             buffs['whitelist'][id] = {}
+-- 			buffs['blacklist'][id] = {}
+--
+--             if id ~= 0 then
+--                 for i = 1, 32 do
+--                     local buff = data:byte(k*48+5+16+i-1) + 256*( math.floor( data:byte(k*48+5+8+ math.floor((i-1)/4)) / 4^((i-1)%4) )%4) -- Credit: Byrth, GearSwap
+--                     if buffs['whitelist'][id][i] ~= buff then
+--                         buffs['whitelist'][id][i] = buff
+--                     end
+-- 					if buffs['blacklist'][id][i] ~= buff then
+--                         buffs['blacklist'][id][i] = buff
+--                     end
+--                 end
+--             end
+--         end
+--     end
+--
+-- end)
+
+
+windower.register_event('load', function()
+    windower.send_command('console_log 1')
+end)
+
 windower.register_event('prerender', function()
-    -- print('p-r')
     local now = os.clock()
 
     if now < next_frame then
@@ -83,72 +114,64 @@ windower.register_event('prerender', function()
     coroutine.schedule(process_queue, 0)
     --
     -- print (#TASK_QUEUE)
-end)
+    -- print (#OPTIONS.PARTY_MEMBERS)
 
-
-windower.register_event('load', function()
-    windower.send_command('console_log 1')
 end)
--- geo-pan death handling -- only debuffs
-windower.register_event("action message", function(actor_id, target_id, actor_index, target_index, message_id, param_1, param_2, param_3)
-    -- print (message_id)
-    print('actmes')
-    if message_id == 563 then
-        if windower.ffxi.get_mob_by_index(target_index).name == 'Luopan' then
-                target = windower.ffxi.get_mob_by_index(actor_index).name
-            if OPTIONS.FORCE_LUOPAN == nil then
-                return
-            else
-                table.insert(TASK_QUEUE, OPTIONS.FORCE_LUOPAN)
-            end
-        end
-    end
-end)
+--
+-- windower.register_event('incoming chunk', function(id, data)
+--
+--     -- print(string.format('%1s %2s'.format(id, 'zoop')))
+--     if id == 23 and #TASK_QUEUE > 0 then
+--         print('looool')
+--         process_queue()
+--     end
+-- end)
 
 
 local PARTY_QUEUE_LIMIT = 2 -- limit number of things to be queued
-local
+local PARTY_QUEUE_COUNTER = 0
 
 function update_party_members()
-    print('updt_pt')
 
-    local tmp_party_ids = {}
-    local tmp_party_names = {}
-
+    print('update pt')
     party_data = windower.ffxi.get_party()
+    if party_data ==  nil then return end
 
-    for _, p_ind in pairs(OPTIONS.PARTY_INDEXES) do
-        member = party_data[p_ind]
-        if member and member.mob ~= nil and member.mob.is_npc == false then
-            OPTIONS.WHITELIST[member.name] = true
+    if party_data.party1_count ~= #OPTIONS.PARTY_MEMBERS then
+        party_names = {}
+        party_indexes = {}
+
+        for _, p_ind in pairs({'p0', 'p1', 'p2', 'p3', 'p4', 'p5'}) do
+            if party_data[p_ind] and party_data[p_ind].mob ~= nil and  party_data[p_ind].mob.is_npc == false then
+                table.insert(party_names, party_data[p_ind].name)
+                table.insert(party_indexes, p_ind)
+            end
         end
+        OPTIONS.PARTY_MEMBERS = party_indexes
+
+        -- todo, better way to maintain whitelist while modifying party
+        OPTIONS.WHITELIST = party_names
+        table.insert(OPTIONS.WHITELIST, LEADER_NAME)
+        -- add more for other people to whitelist
     end
-    -- table:union(OPTIONS.WHITELIST, tmp_party_names)
-    -- add more for other people to whitelist
 end
 
-local HASTE_TIMER = 0
 function check_party_status()
-    print('pt_stat')
-
-    if (OPTIONS.IN_COMBAT == false) or (#TASK_QUEUE > PARTY_QUEUE_LIMIT) then
+    if OPTIONS.IN_COMBAT == false then
         -- print('not in combat')
         return
-    end
-
-    local now = os.clock()
-    local party_data = windower.ffxi.get_party()
-    for i, member in pairs(party_data) do
-        if type(member) == 'table' and OPTIONS.WHITELIST[member.name] then
-            -- print(member.name, member.hpp)
-            print('before', #TASK_QUEUE)
-            if member.hpp < 80 then
-                print(member.name)
-                -- print('found cure')
-
+     end
+     print('pt status')
+    party_data = windower.ffxi.get_party()
+    if party_data == nil then return end
+    if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT and OPTIONS.AUTOHEAL then
+        for _, p_ind in pairs(OPTIONS.PARTY_MEMBERS) do
+            member = party_data[p_ind]
+            if member and member.mob ~= nil and member.mob.is_npc == false and member.hpp ~= 0 and member.hpp < 70 then
+                PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
                 -- print(member.name .. tostring(member.hpp))
                 local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
-                -- tmp_details.tiers = {" III", " II", ""}
+                tmp_details.tiers = {" III", " II", ""}
                 table.insert(TASK_QUEUE, {
                     flag = 'cure',
                     args = {'cure', member.name},
@@ -159,39 +182,14 @@ function check_party_status()
                     from_queue = true,
                 })
                 -- print('Adding 1(frame)', 'cure', #TASK_QUEUE)
-            elseif member.name == LEADER_NAME and member.hpp > 90 and now > HASTE_TIMER then
-                HASTE_TIMER = now + 120
-                table.insert(TASK_QUEUE, {
-                    flag = 'haste',
-                    args = {'haste', member.name},
-                    sender = member.name,
-                    target = member.name,
-                    type = 'spell',
-                    spell_details = SPELL_FLAG_MAP['haste'],
-                    from_queue = true,
-                })
-                -- break
+                break -- exit queue if cure is added.
+            -- elseif member.
             end
-        end
-        print('after', #TASK_QUEUE)
-    end
-end
-
-function check_geo()
-    print('checkgeo')
-    table.insert(TASK_QUEUE, OPTIONS.FORCE_INDI)
-    if OPTIONS.FORCE_LUOPAN and IN_COMBAT == true then
-        pet = windower.ffxi.get_mob_by_index(
-            windower.ffxi.get_mob_by_id(OPTIONS.PLAYER_ID).pet_index
-        )
-        if pet == nil or (pet and pet.hpp == 0) then
-            table.insert(TASK_QUEUE, OPTIONS.FORCE_LUOPAN)
         end
     end
 end
 
 windower.register_event('chat message', function(message, sender, mode, gm)
-    print('chatmes')
     player_info = windower.ffxi.get_player()
     -- print (mode)
 
@@ -201,10 +199,8 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         TASK_QUEUE = T{}
         return
     end
-    -- coroutine.schedule(update_party_members, 0) -- do we really need to check on every party message?
-
     update_party_members()
-    -- print(#TASK_QUEUE)
+    party_names = OPTIONS.WHITELIST
     -- from party
     args = split(message)
 
@@ -221,14 +217,10 @@ windower.register_event('chat message', function(message, sender, mode, gm)
     -- do not do
     -- PARTY_ONLY = True and SEnder Not in Party
 
-    -- print(TOGGLES.PARTY_ONLY, sender, OPTIONS.WHITELIST[sender] )
-    party_only_check = TOGGLES.PARTY_ONLY == false or (TOGGLES.PARTY_ONLY and OPTIONS.WHITELIST[sender])
-
-    -- print('check', party_only_check)
+    party_only_check = TOGGLES.PARTY_ONLY == false or (TOGGLES.PARTY_ONLY and listContains(party_names, sender))
 
     -- print(type(CUSTOM_FLAG_MAP[flag]))
     if (mode == 4 or mode == 3) and SPELL_FLAG_MAP[flag] and party_only_check then
-        print('lol')
         spell_info = SPELL_FLAG_MAP[flag]
         if spell_info.whm_only == true then
             if (player_info.sub_job == 'WHM' or player_info.main_job == 'WHM') then
@@ -237,10 +229,6 @@ windower.register_event('chat message', function(message, sender, mode, gm)
                 print ('no whm main or job to cast -nas')
                 return
             end
-        end
-        if flag == 'haste' then
-            local now = os.clock()
-            HASTE_TIMER = now + 120
         end
         table.insert(TASK_QUEUE, {
             flag = flag,
@@ -286,17 +274,22 @@ windower.register_event('chat message', function(message, sender, mode, gm)
 
         tmp_func()
     end
+
+    if #TASK_QUEUE > 0 then
+        -- print('Adding(chat) 1', flag, #TASK_QUEUE)
+    end
+
+    -- while #TASK_QUEUE > 0 do
+    --     -- print(#TASK_QUEUE)
+    --     process_queue()
+    --     -- print('task completed. ', #TASK_QUEUE, ' left.')
+    --
+    -- end
 end)
 
 
 STATUS_ALERT = true
 function process_queue()
-    print('proc queue')
-    local now = os.clock()
-
-    -- for i, v in pairs(OPTIONS.WHITELIST) do
-    --     print(i, v)
-    -- end
     -- print(#TASK_QUEUE)
     if TOGGLES.BUSY == false and #TASK_QUEUE > 0 then
         TOGGLES.BUSY = true
@@ -307,7 +300,7 @@ function process_queue()
                 TOGGLES.SUFFERING = true
 
                 if STATUS_ALERT then
-                    windower.send_command(string.format('input %1s I am suffering from %2s.', OPTIONS.TELL_MODE, affliction))
+                    windower.send_command(string.format('input %1s I am suffering from %2s.', TELL_MODE, affliction))
                     STATUS_ALERT = false
                 end
                 if TOGGLES.SUFFERING then
@@ -317,7 +310,7 @@ function process_queue()
                 end
                 return
             elseif affliction == nil and TOGGLES.SUFFERING == true then
-                windower.send_command(string.format('input %1s I\'m cured!', OPTIONS.TELL_MODE))
+                windower.send_command(string.format('input %1s I\'m cured!', TELL_MODE))
                 TOGGLES.SUFFERING = false
             elseif TOGGLES.SUFFERING == true then
                 return
@@ -326,9 +319,8 @@ function process_queue()
             STATUS_ALERT = true
             current_task = table.remove(TASK_QUEUE, 1)
 
-            print(current_task.flag)
-            if current_task.spell_details then
-                print(current_task.spell_details.name)
+            if current_task.from_queue then
+                PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER - 1
             end
             -- print('Dequeuing', current_task.flag, #TASK_QUEUE)
 
@@ -340,16 +332,13 @@ function process_queue()
                 -- stuff
             end
         end
-        TOGGLES.BUSY = false
-    else
-        TOGGLES.BUSY = false
-    end
 
-    if OPTIONS.FORCE_INDI and now > OPTIONS.FORCE_INDI_TIMER then
-        check_geo()
+        TOGGLES.BUSY = false
     else
-        check_party_status()
+        TOGGLES.BUSY = false
     end
+    print('eoq')
+    check_party_status()
 end
 -- process_queue:loop(10)
 
@@ -376,24 +365,28 @@ local TIER_DELAY = T{
 }
 
 function cast_spell(task_table)
-    print('casting')
+
+
+    -- print(string.format('starting new spell %s', task_table.spell_details.name))
+    -- if true then
+    --     return
+    -- end
+    print('casting spells')
     spell_name = nil
     spell_tier = nil
-    tmp_tiers = nil
     cast_time = 1
 
     spell_details = task_table.spell_details
     primed_spells = get_available_spells()
     spell_resource = nil
-
+    -- print(task_table.flag)
+    -- if task_table.after_ws then
+    --     print('from ws')
+    -- end
     if OPTIONS.ELEMENTAL_TIER_LIMIT and listContains({'aero', 'fire', 'blizzard', 'bliz', 'thunder', 'stone', 'water'}, task_table.flag) then
         tmp_tiers = OPTIONS.ELEMENTAL_TIER_LIMIT
     else
-        if spell_details.tiers then
-            tmp_tiers = spell_details.tiers
-        else
-            tmp_tiers = nil
-        end
+        tmp_tiers = spell_details.tiers
     end
 
     if tmp_tiers then
@@ -440,21 +433,17 @@ function cast_spell(task_table)
             end
             windower.send_command(string.format('input /assist %s', LEADER_NAME))
             sleep(delay)
-            windower.send_command(string.format('input %1s Casting "%s" on <t>!', OPTIONS.TELL_MODE, spell_name))
+            windower.send_command(string.format('input %1s Casting "%s" on <t>!', TELL_MODE, spell_name))
             windower.send_command(string.format('input /ma "%s" <t>', spell_name))
             windower.send_command('input /lockon')
         else
             if task_table.target then
-                if task_table.target == 'self' then
-                    target = '<me>'
-                else
-                    target = task_table.target
-                end
+                target = task_table.target
             else
                 target = task_table.sender
             end
 
-            windower.send_command(string.format('input %1s Casting "%2s" on %3s!', OPTIONS.TELL_MODE, spell_name, target))
+            windower.send_command(string.format('input %1s Casting "%2s" on %3s!', TELL_MODE, spell_name, target))
             windower.send_command(string.format('input /ma "%1s" %2s', spell_name, target))
         end
 
@@ -471,7 +460,7 @@ function cast_spell(task_table)
             sleep(cast_time + 3)
         end
     elseif spell_resource and (spell_resource.mp_cost > player_info.vitals.mp) then
-        windower.send_command(string.format('input %1s Out of MP :c', OPTIONS.TELL_MODE))
+        windower.send_command(string.format('input %1s Out of MP :c', TELL_MODE))
     elseif spell_resource ~= nil then
         print(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
     else
@@ -501,7 +490,7 @@ end
 
 MB_SPELL_COUNTER = 1
 function execute_leader_command(task_table)
-    print('ldr')
+    print('ldr cmd')
     if LEADER_FLAG_MAP[task_table.flag] then
         TOGGLES.BUSY = true
 
@@ -573,14 +562,7 @@ function execute_leader_command(task_table)
         elseif flag == 'po' then
             if TOGGLES.PARTY_ONLY then TOGGLES.PARTY_ONLY = false else TOGGLES.PARTY_ONLY = true end
             if OPTIONS.PARTY_ONLY then
-                OPTIONS.PARTY_INDEXES = {'p0', 'p1', 'p2', 'p3', 'p4', 'p5'},
                 print('only party')
-            else
-                OPTIONS.PARTY_INDEXES = {
-                    'p0', 'p1', 'p2', 'p3', 'p4', 'p5',
-                    'a10', 'a11', 'a12', 'a13', 'a14', 'a15',
-                    'a20', 'a21', 'a22', 'a23', 'a24', 'a25',
-                }
             end
 
         elseif flag == 'dimmer' then
@@ -596,23 +578,14 @@ function execute_leader_command(task_table)
             windower.send_command('input /dismount')
 
         elseif flag == 'tm' then
-            if OPTIONS.TELL_MODE == '/p' then
-                OPTIONS.TELL_MODE = '/t ' .. LEADER_NAME
+            if TELL_MODE == '/p' then
+                TELL_MODE = '/t ' .. LEADER_NAME
             else
-                OPTIONS.TELL_MODE = '/p'
+                TELL_MODE = '/p'
             end
 
         elseif flag == 'ind' then
-
-            -- for i, v in pairs(task_table) do
-            --     print(i, v)
-            -- end
-            print(sub_command)
-            if task_table and sub_command then
-                OPTIONS.FORCE_INDI = table.copy(task_table)
-
-                local now = os.clock()
-                OPTIONS.FORCE_INDI_TIMER = now + 240
+            if task_args and sub_command then
                 details = INDI_FLAG_MAP[sub_command]
 
                 task_table.flag = sub_command
@@ -637,7 +610,6 @@ function execute_leader_command(task_table)
 
         elseif flag == 'lp' then
             if task_args and sub_command then
-                OPTIONS.FORCE_LUOPAN = table.copy(task_table)
                 details = GEO_FLAG_MAP[sub_command]
 
                 task_table.flag = sub_command
@@ -682,7 +654,7 @@ function execute_leader_command(task_table)
         elseif flag == 'sic' then
             windower.send_command(string.format('input /assist %s', LEADER_NAME))
             sleep(1)
-            windower.send_command(string.format('input %1s Attacking <t>!', OPTIONS.TELL_MODE))
+            windower.send_command(string.format('input %1s Attacking <t>!', TELL_MODE))
             windower.send_command('input /pet Assault <t>')
             windower.send_command('input /lockon')
         elseif flag == 'release' then
@@ -708,7 +680,6 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 
 function sneak()
-    print('snek')
     windower.send_command(string.format('input /ma "Sneak" %s', LEADER_NAME))
     sleep(7)
     windower.send_command(string.format('input /ma "Invisible" %s', LEADER_NAME))
@@ -724,12 +695,10 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------
 function example_flag_function()
-    print('ex')
     print('this is a custom function')
 end
 
 function rr()
-    print('rr')
     windower.send_command('input /ma "Reraise" <me>')
     sleep(5)
 end
@@ -744,9 +713,12 @@ CUSTOM_FLAG_MAP = {
 ----------------------------HELPER FUNCTIONS----------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
-windower.register_event('addon command',function(command, ...)
-    print('acmd')
-    command = command and command:lower() or 'help'
+windower.register_event('addon command',function (command, ...)
+    if command then
+        command = command:lower()
+    else
+        command = 'help'
+    end
 
     local command_args = {...}
     -- for i, a in pairs(command_args) do
@@ -761,10 +733,10 @@ windower.register_event('addon command',function(command, ...)
         -- do stuff
     elseif command == 'luopan' then
 
-        -- if command_args[1] ~= nil and listContains(offensive_geo_flags, command_args[1]) then
-        --     luopan = command_args[1] or 'Geo-Frailty'
-        --     print(string.format('Setting Luopan to %s.', luopan))
-        -- end
+        if command_args[1] ~= nil and listContains(offensive_geo_flags, command_args[1]) then
+            luopan = command_args[1] or 'Geo-Frailty'
+            print(string.format('Setting Luopan to %s.', luopan))
+        end
     elseif command == 'autoheal' then
         if OPTIONS.AUTOHEAL then OPTIONS.AUTOHEAL = false else OPTIONS.AUTOHEAL = true end
         if OPTIONS.AUTOHEAL then
@@ -778,10 +750,10 @@ windower.register_event('addon command',function(command, ...)
             print('only party')
         end
     elseif command == 'tm' then
-        if OPTIONS.TELL_MODE == '/p' then
-            OPTIONS.TELL_MODE = '/t ' .. LEADER_NAME
+        if TELL_MODE == '/p' then
+            TELL_MODE = '/t ' .. LEADER_NAME
         else
-            OPTIONS.TELL_MODE = '/p'
+            TELL_MODE = '/p'
         end
     else
         display_help()
@@ -790,13 +762,21 @@ end)
 
 --display a basic help section
 function display_help()
-    print('help')
     windower.add_to_chat(7, _addon.name .. ' v.' .. _addon.version)
     windower.add_to_chat(7, 'Usage: //copilot cmd')
 end
 
+function get_name_by_id(id)
+    mob = windower.ffxi.get_mob_by_index(id)
+    if mob ~= nil then
+        return mob.name or ''
+    else
+        return ''
+    end
+end
+
 function debuffed()
-    print('dbf')
+    print('debuff check')
     debuffs = {0, 2, 4, 6, 7, 10, 17, 19, 28}
     active_debuff = listContains(debuffs, windower.ffxi.get_player().buffs)
     if active_debuff then
@@ -807,7 +787,6 @@ function debuffed()
 end
 
 function dead(current_status)
-    print('ded')
     dead_status = {2, 3}
     if listContains(dead_status, current_status) then
         return true
@@ -817,7 +796,7 @@ function dead(current_status)
 end
 -- check if specific spell available with optional parameter, or return all available
 function get_available_spells(spell)
-    print('ava_spe')
+    print('check available spell')
     local known_spells = windower.ffxi.get_spells()
     local available = T{}
     local recasts = windower.ffxi.get_spell_recasts()
@@ -841,7 +820,7 @@ function get_available_spells(spell)
 end
 
 function split(inputstr, sep)
-    print('str_spl')
+    print('split')
     if sep == nil then
             sep = " "
     end
@@ -853,7 +832,7 @@ function split(inputstr, sep)
 end
 
 function sleep(n)  -- seconds
-    print('zzz')
+    print('sleep')
     local clock = os.clock
     local t0 = clock()
     -- print(t0)
@@ -864,7 +843,6 @@ function sleep(n)  -- seconds
 end
 
 function table_to_str(target_table, delimiter)
-    print('tb_str')
     new_str = ''
     for i, t in pairs(target_table) do
         new_str = new_str .. delimiter .. t
@@ -873,7 +851,7 @@ function table_to_str(target_table, delimiter)
 end
 
 function listContains(list, value)
-    print('lstcon')
+    print('check list')
     if type(value) == 'table' then
         for _, v in pairs(value) do
             found = listContains(list, v)
@@ -894,7 +872,6 @@ function listContains(list, value)
 end
 
 function traverse_table(tmp_table, spaces)
-    print('tra')
     if spaces == nil then
         spaces = ''
     end
@@ -915,7 +892,6 @@ end
 -- ---------------------------
 -- delay = 0.2
 -- function stuff_that_happens_often()
--- print('stuff')
 --   local party_info = get_party()
 --   -- etc
 -- end
