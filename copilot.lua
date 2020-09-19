@@ -63,9 +63,8 @@ local OPTIONS = T{
 TASK_QUEUE = T{}
 PREVIOUS_TASK = nil
 
-local next_frame = os.clock()
-local frame_check_period = 1
-local party_index = {}
+local NEXT_FRAME = os.clock()
+local FRAME_CHECK_PERIOD = 1
 
 
 buffs = T{}
@@ -106,11 +105,11 @@ end)
 windower.register_event('prerender', function()
     local now = os.clock()
 
-    if now < next_frame then
+    if now < NEXT_FRAME then
         return
     end
 
-    next_frame = now + frame_check_period
+    NEXT_FRAME = now + FRAME_CHECK_PERIOD
     coroutine.schedule(process_queue, 0)
     --
     -- print (#TASK_QUEUE)
@@ -160,8 +159,8 @@ function check_party_status()
     if OPTIONS.IN_COMBAT == false then
         -- print('not in combat')
         return
-     end
-     print('pt status')
+    end
+    print('pt status')
     party_data = windower.ffxi.get_party()
     if party_data == nil then return end
     if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT and OPTIONS.AUTOHEAL then
@@ -293,7 +292,7 @@ function process_queue()
     -- print(#TASK_QUEUE)
     if TOGGLES.BUSY == false and #TASK_QUEUE > 0 then
         TOGGLES.BUSY = true
-
+        FRAME_CHECK_PERIOD = 10
         while #TASK_QUEUE > 0 do
             affliction = debuffed()
             if affliction and TOGGLES.SUFFERING == false then
@@ -308,12 +307,12 @@ function process_queue()
                     sleep(1)
                     TOGGLES.SUFFERING = false
                 end
-                return
+
             elseif affliction == nil and TOGGLES.SUFFERING == true then
                 windower.send_command(string.format('input %1s I\'m cured!', TELL_MODE))
                 TOGGLES.SUFFERING = false
             elseif TOGGLES.SUFFERING == true then
-                return
+                -- return
             end
 
             STATUS_ALERT = true
@@ -339,6 +338,7 @@ function process_queue()
     end
     print('eoq')
     check_party_status()
+    FRAME_CHECK_PERIOD = 1
 end
 -- process_queue:loop(10)
 
