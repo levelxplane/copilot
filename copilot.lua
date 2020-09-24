@@ -52,7 +52,7 @@ local OPTIONS = T{
     FORCE_ELEMENT = nil, -- which elemental spell to use by default
     ELEMENTAL_TIER_LIMIT = {' III', ' II', ''},
     PLAYER_ID = windower.ffxi.get_player().id, -- ID of character using this script.
-    WHITELIST = S{
+    WHITELIST = {
         LEADER_NAME,
     },
     PARTY_MEMBERS = {},
@@ -100,6 +100,7 @@ buffs['blacklist'] = {}
 
 windower.register_event('load', function()
     windower.send_command('console_log 1')
+    update_party_members()
 end)
 
 windower.register_event('prerender', function()
@@ -136,53 +137,54 @@ function update_party_members()
     party_data = windower.ffxi.get_party()
     if party_data ==  nil then return end
 
-    if party_data.party1_count ~= #OPTIONS.PARTY_MEMBERS then
-        party_names = {}
-        party_indexes = {}
+    local party_names = {}
+    local party_indexes = {}
 
-        for _, p_ind in pairs({'p0', 'p1', 'p2', 'p3', 'p4', 'p5'}) do
-            if party_data[p_ind] and party_data[p_ind].mob ~= nil and  party_data[p_ind].mob.is_npc == false then
-                table.insert(party_names, party_data[p_ind].name)
-                table.insert(party_indexes, p_ind)
-            end
+    for _, p_ind in pairs({'p0', 'p1', 'p2', 'p3', 'p4', 'p5'}) do
+        if party_data[p_ind] and party_data[p_ind].mob ~= nil and party_data[p_ind].mob.is_npc == false then
+            table.insert(party_names, party_data[p_ind].name)
+            table.insert(party_indexes, p_ind)
         end
-        OPTIONS.PARTY_MEMBERS = party_indexes
-
-        -- todo, better way to maintain whitelist while modifying party
-        OPTIONS.WHITELIST = party_names
-        table.insert(OPTIONS.WHITELIST, LEADER_NAME)
-        -- add more for other people to whitelist
     end
+    OPTIONS.PARTY_MEMBERS = table.copy(party_indexes)
+    -- todo, better way to maintain whitelist while modifying party
+    OPTIONS.WHITELIST = table.copy(party_names)
+    -- table.insert(OPTIONS.WHITELIST, LEADER_NAME)
+    -- add more for other people to whitelist
 end
 
 function check_party_status()
     if OPTIONS.IN_COMBAT == false then
-        -- print('not in combat')
+        print('nocombat')
+        PARTY_QUEUE_COUNTER = 0
         return
     end
     print('pt status')
     party_data = windower.ffxi.get_party()
     if party_data == nil then return end
-    if PARTY_QUEUE_COUNTER < PARTY_QUEUE_LIMIT and OPTIONS.AUTOHEAL then
-        for _, p_ind in pairs(OPTIONS.PARTY_MEMBERS) do
-            member = party_data[p_ind]
-            if member and member.mob ~= nil and member.mob.is_npc == false and member.hpp ~= 0 and member.hpp < 70 then
+    if OPTIONS.AUTOHEAL then
+        for _, member in pairs(party_data) do
+            if type(member) ~= 'table' then
+                -- pass
+            elseif member.mob == nil then
+                -- pass
+            elseif listContains(OPTIONS.WHITELIST, member.name) and member.hpp ~= 0 and member.hpp < 70 then
                 PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
-                -- print(member.name .. tostring(member.hpp))
-                local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
-                tmp_details.tiers = {" III", " II", ""}
-                table.insert(TASK_QUEUE, {
-                    flag = 'cure',
-                    args = {'cure', member.name},
-                    sender = member.name,
-                    target = member.name,
-                    type = 'spell',
-                    spell_details = tmp_details,
-                    from_queue = true,
-                })
-                -- print('Adding 1(frame)', 'cure', #TASK_QUEUE)
-                break -- exit queue if cure is added.
-            -- elseif member.
+
+                print(string.format('target to cure: %s', member.name))
+                if PARTY_QUEUE_COUNTER <= PARTY_QUEUE_LIMIT then
+                    local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
+                    tmp_details.tiers = {" III", " II", ""}
+                    table.insert(TASK_QUEUE, {
+                        flag = 'cure',
+                        args = {'cure', member.name},
+                        sender = member.name,
+                        target = member.name,
+                        type = 'spell',
+                        spell_details = tmp_details,
+                        from_queue = true,
+                    })
+                end
             end
         end
     end
@@ -198,7 +200,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         TASK_QUEUE = T{}
         return
     end
-    update_party_members()
+    -- update_party_members()
     party_names = OPTIONS.WHITELIST
     -- from party
     args = split(message)
@@ -219,7 +221,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
     party_only_check = TOGGLES.PARTY_ONLY == false or (TOGGLES.PARTY_ONLY and listContains(party_names, sender))
 
     -- print(type(CUSTOM_FLAG_MAP[flag]))
-    if (mode == 4 or mode == 3) and SPELL_FLAG_MAP[flag] and party_only_check then
+    if (mode == 4 or mode == 3) and SPELL_FLAG_MAP[flag] and (party_only_check or sender == LEADER_NAME) then
         spell_info = SPELL_FLAG_MAP[flag]
         if spell_info.whm_only == true then
             if (player_info.sub_job == 'WHM' or player_info.main_job == 'WHM') then
@@ -272,11 +274,13 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         tmp_func = CUSTOM_FLAG_MAP[flag]
 
         tmp_func()
+    elseif sender == LEADER_NAME then
+        update_party_members()
     end
+    -- if #TASK_QUEUE > 0 then
+    --     -- print('Adding(chat) 1', flag, #TASK_QUEUE)
+    -- end
 
-    if #TASK_QUEUE > 0 then
-        -- print('Adding(chat) 1', flag, #TASK_QUEUE)
-    end
 
     -- while #TASK_QUEUE > 0 do
     --     -- print(#TASK_QUEUE)
@@ -290,9 +294,12 @@ end)
 STATUS_ALERT = true
 function process_queue()
     -- print(#TASK_QUEUE)
+
+    print(#TASK_QUEUE, PARTY_QUEUE_COUNTER)
     if TOGGLES.BUSY == false and #TASK_QUEUE > 0 then
         TOGGLES.BUSY = true
-        FRAME_CHECK_PERIOD = 10
+        -- local now = os.clock()
+        -- NEXT_FRAME = now + 5
         while #TASK_QUEUE > 0 do
             affliction = debuffed()
             if affliction and TOGGLES.SUFFERING == false then
@@ -338,7 +345,19 @@ function process_queue()
     end
     print('eoq')
     check_party_status()
-    FRAME_CHECK_PERIOD = 1
+    -- local now = os.clock()
+    -- NEXT_FRAME = now + FRAME_CHECK_PERIOD
+    --
+    --
+    -- local tmp = ''
+    -- for i, v in pairs(OPTIONS.WHITELIST) do
+    --     tmp = tmp .. v .. ' '
+    -- end
+    -- print(tmp)
+    -- tmp = ''
+    -- for i, v in pairs(OPTIONS.PARTY_MEMBERS) do
+    --     tmp = tmp .. i .. v .. ' '
+    -- end
 end
 -- process_queue:loop(10)
 
@@ -413,29 +432,33 @@ function cast_spell(task_table)
     -- if combat_check then
     --     print ('in combat or healing spell')
     -- end
+    print('found spelldetails')
     if spell_resource and combat_check and spell_resource.mp_cost < player_info.vitals.mp then
-
         spell_name = spell_resource.en
         cast_time = spell_resource.cast_time
 
         windower.send_command('ffo stop')
         windower.ffxi.run(false)
 
-        sleep(0.2)
+        sleep(0.3)
 
         TOGGLES.BUSY = true -- redundant
-
+        print('starting cast')
         if spell_details.offensive == true then
             if spell_tier ~= nil and task_table.after_ws then
                 delay = TIER_DELAY[spell_tier]
+                if type(delay) ~= 'number' then
+                    print('bad delay')
+                    delay = 3
+                end
             else
                 delay = 1
             end
-            windower.send_command(string.format('input /assist %s', LEADER_NAME))
-            sleep(delay)
-            windower.send_command(string.format('input %1s Casting "%s" on <t>!', TELL_MODE, spell_name))
-            windower.send_command(string.format('input /ma "%s" <t>', spell_name))
-            windower.send_command('input /lockon')
+            -- windower.send_command(string.format('input /assist %s', LEADER_NAME))
+            -- sleep(delay)
+            windower.send_command(string.format('input %1s Casting "%s" on <bt>!', TELL_MODE, spell_name))
+            windower.send_command(string.format('input /ma "%s" <bt>', spell_name))
+            -- windower.send_command('input /lockon')
         else
             if task_table.target then
                 target = task_table.target
@@ -447,16 +470,23 @@ function cast_spell(task_table)
             windower.send_command(string.format('input /ma "%1s" %2s', spell_name, target))
         end
 
-        -- print(string.format('sleeping for %1s', spell_name), #TASK_QUEUE)
+        print(string.format('sleeping for %1s', spell_name), #TASK_QUEUE)
         -- sleep(cast_time + 2)
+
+        if type(cast_time) ~= 'number' then
+            print('bad cast time')
+            cast_time = 4
+        end
         if #TASK_QUEUE == 0 and task_table.from_queue ~= nil then
             -- print('no remaining tasks')
+            print(#TASK_QUEUE, 'from queue')
             sleep(cast_time)
         elseif #TASK_QUEUE == 0 and task_table.from_queue == nil then -- try to handle non-queued spell delay
             -- print('no remaining tasks(not queue)')
+            print(#TASK_QUEUE, 'not queue')
             sleep(cast_time + 2)
         else
-            -- print(#TASK_QUEUE, 'remaining tasks') -- queued spells have 3 second delay
+            print(#TASK_QUEUE, 'remaining tasks') -- queued spells have 3 second delay
             sleep(cast_time + 3)
         end
     elseif spell_resource and (spell_resource.mp_cost > player_info.vitals.mp) then
@@ -467,6 +497,7 @@ function cast_spell(task_table)
         print('other error found during spell lookup')
     end
 
+    print('end of spell casting')
     -- print('exiting spell')
     if TOGGLES.ALWAYS_FOLLOW and #TASK_QUEUE == 0 then
         -- TOGGLES.BUSY = false
@@ -652,10 +683,10 @@ function execute_leader_command(task_table)
             cast_spell(task_table)
 
         elseif flag == 'sic' then
-            windower.send_command(string.format('input /assist %s', LEADER_NAME))
-            sleep(1)
-            windower.send_command(string.format('input %1s Attacking <t>!', TELL_MODE))
-            windower.send_command('input /pet Assault <t>')
+            -- windower.send_command(string.format('input /assist %s', LEADER_NAME))
+            -- sleep(1)
+            windower.send_command(string.format('input %1s Attacking <bt>!', TELL_MODE))
+            windower.send_command('input /pet Assault <bt>')
             windower.send_command('input /lockon')
         elseif flag == 'release' then
             windower.send_command('input /pet Release <me>')
@@ -838,6 +869,7 @@ function sleep(n)  -- seconds
     -- print(t0)
     while clock() - t0 <= n do end
 
+    print('endsleep')
     -- t0 = clock()
     -- print(t0)
 end
