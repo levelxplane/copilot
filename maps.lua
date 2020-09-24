@@ -1,7 +1,15 @@
 sets = require('sets')
 tables = require('tables')
-local mb_dark = {"stone", "water", "blizzard"}
-local mb_light = {"fire", "aero", "thunder"}
+local mb_dark = {
+    "stone",
+    "water",
+    "blizzard"
+}
+local mb_light = {
+    "fire",
+    "aero",
+    "thunder"
+}
 local mb_aspir = {"aspir"}
 
 SUPER_MAP = T{
@@ -85,6 +93,30 @@ SUPER_MAP = T{
         ["atk"] = {name="Geo-Fury", geo_spell=true, offensive=false},
         ["mdef"] = {name="Geo-Fend", geo_spell=true, offensive=false},
         ["matk"] = {name="Geo-Acumen", geo_spell=true, offensive=false},
+
+        ["slow"] = {name="Geo-Slow", geo_spell=true, offensive=true},
+        ["torpor"] = {name="Geo-Torpor", geo_spell=true, offensive=true},
+        ["slip"] = {name="Geo-Slip", geo_spell=true, offensive=true},
+        ["languor"] = {name="Geo-Languor", geo_spell=true, offensive=true},
+        ["paralysis"] = {name="Geo-Paralysis", geo_spell=true, offensive=true},
+        ["vex"] = {name="Geo-Vex", geo_spell=true, offensive=true},
+        ["frailty"] = {name="Geo-Frailty", geo_spell=true, offensive=true},
+        ["wilt"] = {name="Geo-Wilt", geo_spell=true, offensive=true},
+        ["gravity"] = {name="Geo-Gravity", geo_spell=true, offensive=true},
+        ["malaise"] = {name="Geo-Malaise", geo_spell=true, offensive=true},
+        ["fade"] = {name="Geo-Fade", geo_spell=true, offensive=true},
+
+        -- ["regen"] = {name="Geo-Regen", geo_spell=true, offensive=false},
+        -- ["refresh"] = {name="Geo-Refresh", geo_spell=true, offensive=false},
+        -- ["haste"] = {name="Geo-Haste", geo_spell=true, offensive=false},
+        ["voidance"] = {name="Geo-Voidance", geo_spell=true, offensive=false},
+        ["precision"] = {name="Geo-Precision", geo_spell=true, offensive=false},
+        ["attunement"] = {name="Geo-Attunement", geo_spell=true, offensive=false},
+        ["focus"] = {name="Geo-Focus", geo_spell=true, offensive=false},
+        ["barrier"] = {name="Geo-Barrier", geo_spell=true, offensive=false},
+        ["fury"] = {name="Geo-Fury", geo_spell=true, offensive=false},
+        ["fend"] = {name="Geo-Fend", geo_spell=true, offensive=false},
+        ["acumen"] = {name="Geo-Acumen", geo_spell=true, offensive=false},
     },
     -- cmd ind or ent --
     -- indi debuffs -- treat like non-offensive spells
@@ -115,6 +147,30 @@ SUPER_MAP = T{
         ["atk"] = {name="Indi-Fury", geo_spell=true, offensive=false},
         ["mdef"] = {name="Indi-Fend", geo_spell=true, offensive=false},
         ["matk"] = {name="Indi-Acumen", geo_spell=true, offensive=false},
+
+        ["slow"] = {name="Indi-Slow", geo_spell=true, offensive=false},
+        ["torpor"] = {name="Indi-Torpor", geo_spell=true, offensive=false},
+        ["slip"] = {name="Indi-Slip", geo_spell=true, offensive=false},
+        ["languor"] = {name="Indi-Languor", geo_spell=true, offensive=false},
+        ["paralysis"] = {name="Indi-Paralysis", geo_spell=true, offensive=false},
+        ["vex"] = {name="Indi-Vex", geo_spell=true, offensive=false},
+        ["frailty"] = {name="Indi-Frailty", geo_spell=true, offensive=false},
+        ["wilt"] = {name="Indi-Wilt", geo_spell=true, offensive=false},
+        ["gravity"] = {name="Indi-Gravity", geo_spell=true, offensive=false},
+        ["malaise"] = {name="Indi-Malaise", geo_spell=true, offensive=false},
+        ["fade"] = {name="Indi-Fade", geo_spell=true, offensive=false},
+
+        -- ["regen"] = {name="Indi-Regen", geo_spell=true, offensive=false},
+        -- ["refresh"] = {name="Indi-Refresh", geo_spell=true, offensive=false},
+        -- ["haste"] = {name="Indi-Haste", geo_spell=true, offensive=false},
+        ["voidance"] = {name="Indi-Voidance", geo_spell=true, offensive=false},
+        ["precision"] = {name="Indi-Precision", geo_spell=true, offensive=false},
+        ["attunement"] = {name="Indi-Attunement", geo_spell=true, offensive=false},
+        ["focus"] = {name="Indi-Focus", geo_spell=true, offensive=false},
+        ["barrier"] = {name="Indi-Barrier", geo_spell=true, offensive=false},
+        ["fury"] = {name="Indi-Fury", geo_spell=true, offensive=false},
+        ["fend"] = {name="Indi-Fend", geo_spell=true, offensive=false},
+        ["acumen"] = {name="Indi-Acumen", geo_spell=true, offensive=false},
     },
     smn = T{
         ["garuda"] = {name="Garuda", geo_spell=false, offensive=false},
@@ -153,8 +209,9 @@ SUPER_MAP = T{
 
         -- pew pew
         -- figure this shit out
-        ["mb"] = {leader_only=true},
-        ["tm"] = {leader_only=true},
+        ["mb"] = {leader_only=true}, -- magicburst mode
+        ["tm"] = {leader_only=true}, -- tell mode
+        ["ag"] = {leader_only=true}, -- auto geo/indi spell
     },
 }
 
