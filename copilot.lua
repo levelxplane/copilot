@@ -16,6 +16,8 @@ resources = require('resources')
 
 MAPS = require('maps')
 
+
+
 --------------------------------- Personal Config ---------------------------------------
 local LEADER_NAME = 'Berlioz' -- character to follow/assist. basically the actual person playing.
 local MOUNT = 'Tulfaire'
@@ -29,6 +31,7 @@ local TOGGLES = T{
     ALWAYS_FOLLOW = true, -- if using ffo, always follow or not.
     MAGICBURST = false,  -- try to MB if enabled
     PARTY_ONLY = true,
+    VERBOSE = false,
 }
 local MB_COUNTER = 1
 local NUKE_TIER_LIMIT = 5
@@ -74,8 +77,8 @@ buffs['blacklist'] = {}
 
 -- windower.register_event('incoming chunk', function(id, data)
 --     if id == 0x076 then
---         -- print(id)
---         -- print(type(id))
+--         -- verbose(id)
+--         -- verbose(type(id))
 --         for  k = 0, 4 do
 --             local id = data:unpack('I', k*48+5)
 --             buffs['whitelist'][id] = {}
@@ -113,16 +116,16 @@ windower.register_event('prerender', function()
     NEXT_FRAME = now + FRAME_CHECK_PERIOD
     coroutine.schedule(process_queue, 0)
     --
-    -- print (#TASK_QUEUE)
-    -- print (#OPTIONS.PARTY_MEMBERS)
+    -- verbose (#TASK_QUEUE)
+    -- verbose (#OPTIONS.PARTY_MEMBERS)
 
 end)
 --
 -- windower.register_event('incoming chunk', function(id, data)
 --
---     -- print(string.format('%1s %2s'.format(id, 'zoop')))
+--     -- verbose(string.format('%1s %2s'.format(id, 'zoop')))
 --     if id == 23 and #TASK_QUEUE > 0 then
---         print('looool')
+--         verbose('looool')
 --         process_queue()
 --     end
 -- end)
@@ -133,7 +136,7 @@ local PARTY_QUEUE_COUNTER = 0
 
 function update_party_members()
 
-    print('update pt')
+    verbose('update pt')
     party_data = windower.ffxi.get_party()
     if party_data ==  nil then return end
 
@@ -155,11 +158,11 @@ end
 
 function check_party_status()
     if OPTIONS.IN_COMBAT == false then
-        print('nocombat')
+        verbose('nocombat')
         PARTY_QUEUE_COUNTER = 0
         return
     end
-    print('pt status')
+    verbose('pt status')
     party_data = windower.ffxi.get_party()
     if party_data == nil then return end
     if OPTIONS.AUTOHEAL then
@@ -171,7 +174,7 @@ function check_party_status()
             elseif listContains(OPTIONS.WHITELIST, member.name) and member.hpp ~= 0 and member.hpp < 70 then
                 PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
 
-                print(string.format('target to cure: %s', member.name))
+                verbose(string.format('target to cure: %s', member.name))
                 if PARTY_QUEUE_COUNTER <= PARTY_QUEUE_LIMIT then
                     local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
                     tmp_details.tiers = {" III", " II", ""}
@@ -192,7 +195,7 @@ end
 
 windower.register_event('chat message', function(message, sender, mode, gm)
     player_info = windower.ffxi.get_player()
-    -- print (mode)
+    -- verbose (mode)
 
     if (mode == 3 or mode == 4) and dead(player_info.status) == false then
     else
@@ -220,14 +223,14 @@ windower.register_event('chat message', function(message, sender, mode, gm)
 
     party_only_check = TOGGLES.PARTY_ONLY == false or (TOGGLES.PARTY_ONLY and listContains(party_names, sender))
 
-    -- print(type(CUSTOM_FLAG_MAP[flag]))
+    -- verbose(type(CUSTOM_FLAG_MAP[flag]))
     if (mode == 4 or mode == 3) and SPELL_FLAG_MAP[flag] and (party_only_check or sender == LEADER_NAME) then
         spell_info = SPELL_FLAG_MAP[flag]
         if spell_info.whm_only == true then
             if (player_info.sub_job == 'WHM' or player_info.main_job == 'WHM') then
                 -- pass
             else
-                print ('no whm main or job to cast -nas')
+                verbose ('no whm main or job to cast -nas')
                 return
             end
         end
@@ -270,7 +273,7 @@ windower.register_event('chat message', function(message, sender, mode, gm)
             after_ws = true,
         })
     elseif type(CUSTOM_FLAG_MAP[flag]) == 'function' and sender == LEADER_NAME then
-        -- print('custom')
+        -- verbose('custom')
         tmp_func = CUSTOM_FLAG_MAP[flag]
 
         tmp_func()
@@ -278,14 +281,14 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         update_party_members()
     end
     -- if #TASK_QUEUE > 0 then
-    --     -- print('Adding(chat) 1', flag, #TASK_QUEUE)
+    --     -- verbose('Adding(chat) 1', flag, #TASK_QUEUE)
     -- end
 
 
     -- while #TASK_QUEUE > 0 do
-    --     -- print(#TASK_QUEUE)
+    --     -- verbose(#TASK_QUEUE)
     --     process_queue()
-    --     -- print('task completed. ', #TASK_QUEUE, ' left.')
+    --     -- verbose('task completed. ', #TASK_QUEUE, ' left.')
     --
     -- end
 end)
@@ -293,9 +296,9 @@ end)
 
 STATUS_ALERT = true
 function process_queue()
-    -- print(#TASK_QUEUE)
+    -- verbose(#TASK_QUEUE)
 
-    print(#TASK_QUEUE, PARTY_QUEUE_COUNTER)
+    verbose(#TASK_QUEUE, PARTY_QUEUE_COUNTER)
     if TOGGLES.BUSY == false and #TASK_QUEUE > 0 then
         TOGGLES.BUSY = true
         -- local now = os.clock()
@@ -328,7 +331,7 @@ function process_queue()
             if current_task.from_queue then
                 PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER - 1
             end
-            -- print('Dequeuing', current_task.flag, #TASK_QUEUE)
+            -- verbose('Dequeuing', current_task.flag, #TASK_QUEUE)
 
             if current_task.type == 'spell' then
                 cast_spell(current_task)
@@ -343,7 +346,7 @@ function process_queue()
     else
         TOGGLES.BUSY = false
     end
-    print('eoq')
+    verbose('eoq')
     check_party_status()
     -- local now = os.clock()
     -- NEXT_FRAME = now + FRAME_CHECK_PERIOD
@@ -353,7 +356,7 @@ function process_queue()
     -- for i, v in pairs(OPTIONS.WHITELIST) do
     --     tmp = tmp .. v .. ' '
     -- end
-    -- print(tmp)
+    -- verbose(tmp)
     -- tmp = ''
     -- for i, v in pairs(OPTIONS.PARTY_MEMBERS) do
     --     tmp = tmp .. i .. v .. ' '
@@ -386,11 +389,11 @@ local TIER_DELAY = T{
 function cast_spell(task_table)
 
 
-    -- print(string.format('starting new spell %s', task_table.spell_details.name))
+    -- verbose(string.format('starting new spell %s', task_table.spell_details.name))
     -- if true then
     --     return
     -- end
-    print('casting spells')
+    verbose('casting spells')
     spell_name = nil
     spell_tier = nil
     cast_time = 1
@@ -398,9 +401,9 @@ function cast_spell(task_table)
     spell_details = task_table.spell_details
     primed_spells = get_available_spells()
     spell_resource = nil
-    -- print(task_table.flag)
+    -- verbose(task_table.flag)
     -- if task_table.after_ws then
-    --     print('from ws')
+    --     verbose('from ws')
     -- end
     if OPTIONS.ELEMENTAL_TIER_LIMIT and listContains({'aero', 'fire', 'blizzard', 'bliz', 'thunder', 'stone', 'water'}, task_table.flag) then
         tmp_tiers = OPTIONS.ELEMENTAL_TIER_LIMIT
@@ -412,7 +415,7 @@ function cast_spell(task_table)
         for _, tier in pairs(tmp_tiers) do
             spell_resource = primed_spells[spell_details.name .. tier]
             if spell_resource then
-                -- print('found ' .. spell_resource.en)
+                -- verbose('found ' .. spell_resource.en)
                 spell_tier = tier
                 break
             end
@@ -430,9 +433,9 @@ function cast_spell(task_table)
     combat_check = spell_details.offensive == false or (spell_details.offensive == true and OPTIONS.IN_COMBAT)
 
     -- if combat_check then
-    --     print ('in combat or healing spell')
+    --     verbose ('in combat or healing spell')
     -- end
-    print('found spelldetails')
+    verbose('found spelldetails')
     if spell_resource and combat_check and spell_resource.mp_cost < player_info.vitals.mp then
         spell_name = spell_resource.en
         cast_time = spell_resource.cast_time
@@ -443,7 +446,7 @@ function cast_spell(task_table)
         sleep(0.3)
 
         TOGGLES.BUSY = true -- redundant
-        print('starting cast')
+        verbose('starting cast')
         if spell_details.offensive == true then
             if spell_tier ~= nil and task_table.after_ws then
                 delay = TIER_DELAY[spell_tier]
@@ -470,7 +473,7 @@ function cast_spell(task_table)
             windower.send_command(string.format('input /ma "%1s" %2s', spell_name, target))
         end
 
-        print(string.format('sleeping for %1s', spell_name), #TASK_QUEUE)
+        verbose(string.format('sleeping for %1s', spell_name), #TASK_QUEUE)
         -- sleep(cast_time + 2)
 
         if type(cast_time) ~= 'number' then
@@ -478,27 +481,27 @@ function cast_spell(task_table)
             cast_time = 4
         end
         if #TASK_QUEUE == 0 and task_table.from_queue ~= nil then
-            -- print('no remaining tasks')
-            print(#TASK_QUEUE, 'from queue')
+            -- verbose('no remaining tasks')
+            verbose(#TASK_QUEUE, 'from queue')
             sleep(cast_time)
         elseif #TASK_QUEUE == 0 and task_table.from_queue == nil then -- try to handle non-queued spell delay
-            -- print('no remaining tasks(not queue)')
-            print(#TASK_QUEUE, 'not queue')
+            -- verbose('no remaining tasks(not queue)')
+            verbose(#TASK_QUEUE, 'not queue')
             sleep(cast_time + 2)
         else
-            print(#TASK_QUEUE, 'remaining tasks') -- queued spells have 3 second delay
+            verbose(#TASK_QUEUE, 'remaining tasks') -- queued spells have 3 second delay
             sleep(cast_time + 3)
         end
     elseif spell_resource and (spell_resource.mp_cost > player_info.vitals.mp) then
         windower.send_command(string.format('input %1s Out of MP :c', TELL_MODE))
     elseif spell_resource ~= nil then
-        print(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
+        verbose(string.format('Usable spell not found for %s', task_table.spell_details.name .. spell_tier))
     else
         print('other error found during spell lookup')
     end
 
-    print('end of spell casting')
-    -- print('exiting spell')
+    verbose('end of spell casting')
+    -- verbose('exiting spell')
     if TOGGLES.ALWAYS_FOLLOW and #TASK_QUEUE == 0 then
         -- TOGGLES.BUSY = false
         windower.send_command(string.format('ffo %s', LEADER_NAME))
@@ -521,7 +524,7 @@ end
 
 MB_SPELL_COUNTER = 1
 function execute_leader_command(task_table)
-    print('ldr cmd')
+    verbose('ldr cmd')
     if LEADER_FLAG_MAP[task_table.flag] then
         TOGGLES.BUSY = true
 
@@ -530,7 +533,7 @@ function execute_leader_command(task_table)
 
         sub_command = task_args[2]
 
-        -- print(flag)
+        -- verbose(flag)
         if flag == 'mb' then
             if tonumber(sub_command) and (0 <= tonumber(sub_command) and tonumber(sub_command) < 6) then
                 if tonumber(sub_command) == 0 then
@@ -577,7 +580,7 @@ function execute_leader_command(task_table)
 
             if sub_command and 0 < tonumber(sub_command) and tonumber(sub_command) < 11 then
                 windower.send_command(string.format('ffo min %s', sub_command))
-                print(string.format('ffo min %s', sub_command))
+                verbose(string.format('ffo min %s', sub_command))
             end
 
         elseif flag == 'stop' then
@@ -807,7 +810,7 @@ function get_name_by_id(id)
 end
 
 function debuffed()
-    print('debuff check')
+    verbose('debuff check')
     debuffs = {0, 2, 4, 6, 7, 10, 17, 19, 28}
     active_debuff = listContains(debuffs, windower.ffxi.get_player().buffs)
     if active_debuff then
@@ -827,7 +830,7 @@ function dead(current_status)
 end
 -- check if specific spell available with optional parameter, or return all available
 function get_available_spells(spell)
-    print('check available spell')
+    verbose('check available spell')
     local known_spells = windower.ffxi.get_spells()
     local available = T{}
     local recasts = windower.ffxi.get_spell_recasts()
@@ -851,7 +854,7 @@ function get_available_spells(spell)
 end
 
 function split(inputstr, sep)
-    print('split')
+    verbose('split')
     if sep == nil then
             sep = " "
     end
@@ -863,13 +866,13 @@ function split(inputstr, sep)
 end
 
 function sleep(n)  -- seconds
-    print('sleep')
+    verbose('sleep')
     local clock = os.clock
     local t0 = clock()
     -- print(t0)
     while clock() - t0 <= n do end
 
-    print('endsleep')
+    verbose('endsleep')
     -- t0 = clock()
     -- print(t0)
 end
@@ -883,7 +886,7 @@ function table_to_str(target_table, delimiter)
 end
 
 function listContains(list, value)
-    print('check list')
+    verbose('check list')
     if type(value) == 'table' then
         for _, v in pairs(value) do
             found = listContains(list, v)
@@ -912,11 +915,18 @@ function traverse_table(tmp_table, spaces)
 			print(spaces .. k)
             traverse_table(v, spaces .. ' ')
         else
-            print(spaces .. k .. ': ' .. v)
+            verbose(spaces .. k .. ': ' .. v)
         end
     end
 end
 
+function verbose(text)
+
+    if TOGGLES.VERBOSE then
+        print(text)
+    end
+
+end
 -- ideal: you watch all the party packets for updates
 -- less-ideal: use functions.loop
 -- also less-ideal: use prerender
