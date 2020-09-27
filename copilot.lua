@@ -166,16 +166,18 @@ function check_party_status()
     party_data = windower.ffxi.get_party()
     if party_data == nil then return end
     if OPTIONS.AUTOHEAL then
+
         for _, member in pairs(party_data) do
             if type(member) ~= 'table' then
                 -- pass
             elseif member.mob == nil then
                 -- pass
-            elseif listContains(OPTIONS.WHITELIST, member.name) and member.hpp ~= 0 and member.hpp < 70 then
-                PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
+            elseif listContains(OPTIONS.WHITELIST, member.name) and member.hpp ~= 0 and member.hpp < 75 then
 
                 verbose(string.format('target to cure: %s', member.name))
+                -- print( PARTY_QUEUE_COUNTER, PARTY_QUEUE_LIMIT)
                 if PARTY_QUEUE_COUNTER <= PARTY_QUEUE_LIMIT then
+                    PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
                     local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
                     tmp_details.tiers = {" III", " II", ""}
                     table.insert(TASK_QUEUE, {
@@ -338,7 +340,7 @@ function process_queue()
             elseif current_task.type == 'command' then
                 execute_leader_command(current_task)
             else
-                -- stuff
+                -- stuffx`
             end
         end
 
