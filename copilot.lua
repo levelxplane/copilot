@@ -157,6 +157,7 @@ function update_party_members()
 end
 
 function check_party_status()
+    -- print( PARTY_QUEUE_COUNTER, PARTY_QUEUE_LIMIT)
     if OPTIONS.IN_COMBAT == false then
         verbose('nocombat')
         PARTY_QUEUE_COUNTER = 0
@@ -178,6 +179,7 @@ function check_party_status()
                 -- print( PARTY_QUEUE_COUNTER, PARTY_QUEUE_LIMIT)
                 if PARTY_QUEUE_COUNTER <= PARTY_QUEUE_LIMIT then
                     PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
+                    -- print('adding heal')
                     local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
                     tmp_details.tiers = {" III", " II", ""}
                     table.insert(TASK_QUEUE, {
@@ -739,9 +741,25 @@ function rr()
     sleep(5)
 end
 
+function proshe()
+    windower.send_command('input /ma "Protectra III" <me>')
+    sleep(5)
+    windower.send_command('input /ma "Shellra II" <me>')
+    sleep(3)
+end
+
+function stoq()
+    windower.send_command('input /ma "Stoneskin" <me>')
+    sleep(5)
+    windower.send_command('input /ma "Aquaveil" <me>')
+    sleep(4)
+end
+
 CUSTOM_FLAG_MAP = {
     ["exampleflag"] = example_flag_function,
     ["rr"] = rr,
+    ["stoq"] = stoq,
+    ["proshe"] = proshe,
 }
 
 
