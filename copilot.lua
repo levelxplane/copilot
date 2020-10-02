@@ -748,8 +748,10 @@ function proshe()
     sleep(3)
 end
 
-function stoq()
+function staq()
     windower.send_command('input /ma "Stoneskin" <me>')
+    sleep(7)
+    windower.send_command('input /ma "Blink" <me>')
     sleep(5)
     windower.send_command('input /ma "Aquaveil" <me>')
     sleep(4)
@@ -758,7 +760,7 @@ end
 CUSTOM_FLAG_MAP = {
     ["exampleflag"] = example_flag_function,
     ["rr"] = rr,
-    ["stoq"] = stoq,
+    ["staq"] = staq,
     ["proshe"] = proshe,
 }
 
