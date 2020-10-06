@@ -64,6 +64,8 @@ SUPER_MAP = T{
         ["refresh"] = {name="Refresh", geo_spell=false, offensive=false, tiers={" II", ""}},
         ["haste"] = {name="Haste", geo_spell=false, offensive=false, tiers={" II", ""}},
         ["cure"] = {name="Cure", geo_spell=false, offensive=false, tiers={" V", " IV", " III", " II", ""}},
+        ["cure3"] = {name="Cure", geo_spell=false, offensive=false, tiers={" III", " II", ""}},
+        ["cure2"] = {name="Cure", geo_spell=false, offensive=false, tiers={" III", " II", ""}},
         ["curaga"] = {name="Curaga", geo_spell=false, offensive=false, tiers={" III", " II", ""}},
         ["raise"] = {name="Raise", geo_spell=false, offensive=false, tiers={" III", " II", ""}},
     },
