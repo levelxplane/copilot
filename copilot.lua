@@ -171,7 +171,7 @@ function check_party_status()
         for _, member in pairs(party_data) do
             if type(member) ~= 'table' then
                 -- pass
-            elseif member.mob == nil then
+            elseif member.mob == nil or (member.mob and math.sqrt(member.mob.distance) > 20) then
                 -- pass
             elseif listContains(OPTIONS.WHITELIST, member.name) and member.hpp ~= 0 and member.hpp < 75 then
 
@@ -752,7 +752,7 @@ function staq()
     windower.send_command('input /ma "Stoneskin" <me>')
     sleep(7)
     windower.send_command('input /ma "Blink" <me>')
-    sleep(5)
+    sleep(7)
     windower.send_command('input /ma "Aquaveil" <me>')
     sleep(4)
 end
