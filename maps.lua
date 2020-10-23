@@ -1,7 +1,7 @@
 sets = require('sets')
 tables = require('tables')
 local mb_dark = {
-    "stone",
+    "rocks",
     "water",
     "blizzard"
 }
@@ -28,6 +28,7 @@ SUPER_MAP = T{
         ["bliz"] = {name="Blizzard", geo_spell=false, offensive=true, tiers={" V", " IV", " III", " II", ""}},
         ["water"] = {name="Water", geo_spell=false, offensive=true, tiers={" V", " IV", " III", " II", ""}},
         ["stone"] = {name="Stone", geo_spell=false, offensive=true, tiers={" V", " IV", " III", " II", ""}},
+        ["rocks"] = {name="Stone", geo_spell=false, offensive=true, tiers={" V", " IV", " III", " II", ""}},
         ["fira"] = {name="Fira", geo_spell=false, offensive=true, tiers={" II", ""}},
         ["aera"] = {name="Aera", geo_spell=false, offensive=true, tiers={" II", ""}},
         ["thundara"] = {name="Thundara", geo_spell=false, offensive=true, tiers={" II", ""}},
@@ -42,6 +43,7 @@ SUPER_MAP = T{
         ["paralyna"] = {name="Paralyna", geo_spell=false, offensive=false, whm_only=true},
         ["stona"] = {name="Stona", geo_spell=false, offensive=false, whm_only=true},
         ["petri"] = {name="Stona", geo_spell=false, offensive=false, whm_only=true},
+        ["petrified"] = {name="Stona", geo_spell=false, offensive=false, whm_only=true},
         ["silence"] = {name="Silena", geo_spell=false, offensive=false, whm_only=true},
         ["silena"] = {name="Silena", geo_spell=false, offensive=false, whm_only=true},
         ["poison"] = {name="Poisona", geo_spell=false, offensive=false, whm_only=true},

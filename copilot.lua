@@ -61,6 +61,7 @@ local OPTIONS = T{
     PARTY_MEMBERS = {},
     AUTOHEAL = true,
     IN_COMBAT = false,
+    LEADER_ONLY = false,
 }
 
 TASK_QUEUE = T{}
@@ -135,6 +136,9 @@ local PARTY_QUEUE_LIMIT = 2 -- limit number of things to be queued
 local PARTY_QUEUE_COUNTER = 0
 
 function update_party_members()
+    if OPTIONS.LEADER_ONLY then
+        OPTIONS.WHITELIST = S{LEADER_NAME}
+    end
 
     verbose('update pt')
     party_data = windower.ffxi.get_party()
@@ -152,13 +156,14 @@ function update_party_members()
     OPTIONS.PARTY_MEMBERS = table.copy(party_indexes)
     -- todo, better way to maintain whitelist while modifying party
     OPTIONS.WHITELIST = table.copy(party_names)
-    -- table.insert(OPTIONS.WHITELIST, LEADER_NAME)
+    table.insert(OPTIONS.WHITELIST, LEADER_NAME)
+    table.insert(OPTIONS.WHITELIST, 'Ihsa')
     -- add more for other people to whitelist
 end
 
 function check_party_status()
     -- print( PARTY_QUEUE_COUNTER, PARTY_QUEUE_LIMIT)
-    if OPTIONS.IN_COMBAT == false then
+    if OPTIONS.IN_COMBAT == false or OPTIONS.AUTOHEAL == false then
         verbose('nocombat')
         PARTY_QUEUE_COUNTER = 0
         return
@@ -182,6 +187,25 @@ function check_party_status()
                     -- print('adding heal')
                     local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
                     tmp_details.tiers = {" III", " II", ""}
+                    table.insert(TASK_QUEUE, {
+                        flag = 'cure',
+                        args = {'cure', member.name},
+                        sender = member.name,
+                        target = member.name,
+                        type = 'spell',
+                        spell_details = tmp_details,
+                        from_queue = true,
+                    })
+                end
+            elseif listContains(OPTIONS.WHITELIST, member.name) and member.hpp ~= 0 and member.hpp < 50 then
+
+                verbose(string.format('target to cure: %s', member.name))
+                -- print( PARTY_QUEUE_COUNTER, PARTY_QUEUE_LIMIT)
+                if PARTY_QUEUE_COUNTER <= PARTY_QUEUE_LIMIT then
+                    PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
+                    -- print('adding heal')
+                    local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
+                    tmp_details.tiers = {" IV", " III", " II", ""}
                     table.insert(TASK_QUEUE, {
                         flag = 'cure',
                         args = {'cure', member.name},
@@ -283,6 +307,14 @@ windower.register_event('chat message', function(message, sender, mode, gm)
         tmp_func()
     elseif sender == LEADER_NAME then
         update_party_members()
+
+    elseif sender ~= LEADER_NAME then
+        windower.send_command(string.format(
+        '/t %s %s says %s',
+        LEADER_NAME,
+        sender,
+        message
+    ))
     end
     -- if #TASK_QUEUE > 0 then
     --     -- verbose('Adding(chat) 1', flag, #TASK_QUEUE)
@@ -301,6 +333,15 @@ end)
 STATUS_ALERT = true
 function process_queue()
     -- verbose(#TASK_QUEUE)
+
+    player_info = windower.ffxi.get_player()
+    -- verbose (mode)
+
+    if dead(player_info.status) == true then
+        -- clear queue if dead
+        TASK_QUEUE = T{}
+        return
+    end
 
     verbose(#TASK_QUEUE, PARTY_QUEUE_COUNTER)
     if TOGGLES.BUSY == false and #TASK_QUEUE > 0 then
@@ -326,7 +367,7 @@ function process_queue()
                 windower.send_command(string.format('input %1s I\'m cured!', TELL_MODE))
                 TOGGLES.SUFFERING = false
             elseif TOGGLES.SUFFERING == true then
-                -- return
+                return
             end
 
             STATUS_ALERT = true
@@ -409,7 +450,7 @@ function cast_spell(task_table)
     -- if task_table.after_ws then
     --     verbose('from ws')
     -- end
-    if OPTIONS.ELEMENTAL_TIER_LIMIT and listContains({'aero', 'fire', 'blizzard', 'bliz', 'thunder', 'stone', 'water'}, task_table.flag) then
+    if OPTIONS.ELEMENTAL_TIER_LIMIT and listContains({'aero', 'fire', 'blizzard', 'bliz', 'thunder', 'rocks', 'water'}, task_table.flag) then
         tmp_tiers = OPTIONS.ELEMENTAL_TIER_LIMIT
     else
         tmp_tiers = spell_details.tiers
@@ -591,17 +632,17 @@ function execute_leader_command(task_table)
             windower.send_command('ffo stop')
             TOGGLES.ALWAYS_FOLLOW = false
 
-        elseif flag == 'autoheal' then
-            if OPTIONS.AUTOHEAL then OPTIONS.AUTOHEAL = false else OPTIONS.AUTOHEAL = true end
-            if OPTIONS.AUTOHEAL then
-                print('will autoheal')
-            end
-
-        elseif flag == 'po' then
-            if TOGGLES.PARTY_ONLY then TOGGLES.PARTY_ONLY = false else TOGGLES.PARTY_ONLY = true end
-            if OPTIONS.PARTY_ONLY then
-                print('only party')
-            end
+        -- elseif flag == 'autoheal' then
+        --     if OPTIONS.AUTOHEAL then OPTIONS.AUTOHEAL = false else OPTIONS.AUTOHEAL = true end
+        --     if OPTIONS.AUTOHEAL then
+        --         print('will autoheal')
+        --     end
+        --
+        -- elseif flag == 'po' then
+        --     if TOGGLES.PARTY_ONLY then TOGGLES.PARTY_ONLY = false else TOGGLES.PARTY_ONLY = true end
+        --     if OPTIONS.PARTY_ONLY then
+        --         print('only party')
+        --     end
 
         elseif flag == 'dimmer' then
             windower.send_command('dimmer')
@@ -797,13 +838,25 @@ windower.register_event('addon command',function (command, ...)
         if OPTIONS.AUTOHEAL then OPTIONS.AUTOHEAL = false else OPTIONS.AUTOHEAL = true end
         if OPTIONS.AUTOHEAL then
             print('will autoheal')
+        else
+            print('not autohealing')
         end
         -- windower.send_command(string.format('input /ma "%s" ', luopan) .. '<me>')
-    elseif command == 'po' then
+    elseif command == 'leader' then
+        if OPTIONS.LEADER_ONLY then OPTIONS.LEADER_ONLY = false else OPTIONS.LEADER_ONLY = true end
+        if OPTIONS.LEADER_ONLY then
+            print('only targeting leader')
+        else
+            print('targeting players')
+        end
+        -- windower.send_command(string.format('input /ma "%s" ', luopan) .. '<me>')
+    elseif command == 'party' then
         -- nui id == 597433
         if TOGGLES.PARTY_ONLY then TOGGLES.PARTY_ONLY = false else TOGGLES.PARTY_ONLY = true end
         if OPTIONS.PARTY_ONLY then
-            print('only party')
+            print('only respond to party')
+        else
+            print('respond to anyone?')
         end
     elseif command == 'tm' then
         if TELL_MODE == '/p' then
