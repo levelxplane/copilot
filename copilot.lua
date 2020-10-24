@@ -137,7 +137,10 @@ local PARTY_QUEUE_COUNTER = 0
 
 function update_party_members()
     if OPTIONS.LEADER_ONLY then
-        OPTIONS.WHITELIST = S{LEADER_NAME}
+        OPTIONS.WHITELIST = S{
+            LEADER_NAME,
+            windower.ffxi.get_player().name
+        }
     end
 
     verbose('update pt')
