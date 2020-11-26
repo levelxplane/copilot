@@ -60,7 +60,6 @@ local OPTIONS = T{
     },
     PARTY_MEMBERS = {},
     AUTOHEAL = true,
-    IN_COMBAT = false,
     LEADER_ONLY = false,
 }
 
@@ -132,41 +131,42 @@ end)
 -- end)
 
 
-local PARTY_QUEUE_LIMIT = 2 -- limit number of things to be queued
+local PARTY_QUEUE_LIMIT = 1 -- limit number of things to be queued
 local PARTY_QUEUE_COUNTER = 0
 
 function update_party_members()
     if OPTIONS.LEADER_ONLY then
-        OPTIONS.WHITELIST = S{
+        OPTIONS.WHITELIST = {
             LEADER_NAME,
-            windower.ffxi.get_player().name
+            windower.ffxi.get_player().name,
+            -- 'Ihsa',
+            -- 'Sharkkie'
         }
-    end
+    else
+        verbose('update pt')
+        party_data = windower.ffxi.get_party()
+        if party_data ==  nil then return end
 
-    verbose('update pt')
-    party_data = windower.ffxi.get_party()
-    if party_data ==  nil then return end
+        local party_names = {}
+        local party_indexes = {}
 
-    local party_names = {}
-    local party_indexes = {}
-
-    for _, p_ind in pairs({'p0', 'p1', 'p2', 'p3', 'p4', 'p5'}) do
-        if party_data[p_ind] and party_data[p_ind].mob ~= nil and party_data[p_ind].mob.is_npc == false then
-            table.insert(party_names, party_data[p_ind].name)
-            table.insert(party_indexes, p_ind)
+        for _, p_ind in pairs({'p0', 'p1', 'p2', 'p3', 'p4', 'p5'}) do
+            if party_data[p_ind] and party_data[p_ind].mob ~= nil and party_data[p_ind].mob.is_npc == false then
+                table.insert(party_names, party_data[p_ind].name)
+                table.insert(party_indexes, p_ind)
+            end
         end
+        OPTIONS.PARTY_MEMBERS = table.copy(party_indexes)
+        -- todo, better way to maintain whitelist while modifying party
+        OPTIONS.WHITELIST = table.copy(party_names)
+        table.insert(OPTIONS.WHITELIST, LEADER_NAME)
+        -- table.insert(OPTIONS.WHITELIST, 'Ihsa')
     end
-    OPTIONS.PARTY_MEMBERS = table.copy(party_indexes)
-    -- todo, better way to maintain whitelist while modifying party
-    OPTIONS.WHITELIST = table.copy(party_names)
-    table.insert(OPTIONS.WHITELIST, LEADER_NAME)
-    table.insert(OPTIONS.WHITELIST, 'Ihsa')
-    -- add more for other people to whitelist
 end
 
 function check_party_status()
     -- print( PARTY_QUEUE_COUNTER, PARTY_QUEUE_LIMIT)
-    if OPTIONS.IN_COMBAT == false or OPTIONS.AUTOHEAL == false then
+    if windower.ffxi.get_player().in_combat == false or OPTIONS.AUTOHEAL == false then
         verbose('nocombat')
         PARTY_QUEUE_COUNTER = 0
         return
@@ -176,30 +176,17 @@ function check_party_status()
     if party_data == nil then return end
     if OPTIONS.AUTOHEAL then
 
+        tmp = ''
+
+        for i, v in pairs(OPTIONS.WHITELIST) do
+            tmp = tmp .. v
+        end
+        verbose(tmp)
         for _, member in pairs(party_data) do
             if type(member) ~= 'table' then
                 -- pass
             elseif member.mob == nil or (member.mob and math.sqrt(member.mob.distance) > 20) then
                 -- pass
-            elseif listContains(OPTIONS.WHITELIST, member.name) and member.hpp ~= 0 and member.hpp < 75 then
-
-                verbose(string.format('target to cure: %s', member.name))
-                -- print( PARTY_QUEUE_COUNTER, PARTY_QUEUE_LIMIT)
-                if PARTY_QUEUE_COUNTER <= PARTY_QUEUE_LIMIT then
-                    PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
-                    -- print('adding heal')
-                    local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
-                    tmp_details.tiers = {" III", " II", ""}
-                    table.insert(TASK_QUEUE, {
-                        flag = 'cure',
-                        args = {'cure', member.name},
-                        sender = member.name,
-                        target = member.name,
-                        type = 'spell',
-                        spell_details = tmp_details,
-                        from_queue = true,
-                    })
-                end
             elseif listContains(OPTIONS.WHITELIST, member.name) and member.hpp ~= 0 and member.hpp < 50 then
 
                 verbose(string.format('target to cure: %s', member.name))
@@ -208,7 +195,22 @@ function check_party_status()
                     PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
                     -- print('adding heal')
                     local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
-                    tmp_details.tiers = {" IV", " III", " II", ""}
+                    if OPTIONS.LEADER_ONLY or member.name == LEADER_NAME then
+                        tmp_details.tiers = {
+                            " IV",
+                            " III",
+                            " II",
+                            ""
+                        }
+                    else
+                        tmp_details.tiers = {
+                            -- " IV",
+                            " III",
+                            " II",
+                            -- ""
+                        }
+                    end
+                    -- tmp_details.tiers = {" III", " II", ""}
                     table.insert(TASK_QUEUE, {
                         flag = 'cure',
                         args = {'cure', member.name},
@@ -218,6 +220,70 @@ function check_party_status()
                         spell_details = tmp_details,
                         from_queue = true,
                     })
+                    return
+                end
+            elseif listContains(OPTIONS.WHITELIST, member.name) and member.hpp ~= 0 and member.hpp < 70 then
+
+                verbose(string.format('target to cure: %s', member.name))
+                -- print( PARTY_QUEUE_COUNTER, PARTY_QUEUE_LIMIT)
+                if PARTY_QUEUE_COUNTER <= PARTY_QUEUE_LIMIT then
+                    PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
+                    -- print('adding heal')
+                    local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
+                    if OPTIONS.LEADER_ONLY then
+                        tmp_details.tiers = {
+                            -- " IV",
+                            " III",
+                            -- " II",
+                            -- ""
+                        }
+                    else
+                        tmp_details.tiers = {
+                            " III",
+                            " II",
+                            ""
+                        }
+                    end
+                    -- tmp_details.tiers = {" III", " II", ""}
+                    table.insert(TASK_QUEUE, {
+                        flag = 'cure',
+                        args = {'cure', member.name},
+                        sender = member.name,
+                        target = member.name,
+                        type = 'spell',
+                        spell_details = tmp_details,
+                        from_queue = true,
+                    })
+                    return
+                end
+            elseif listContains(OPTIONS.WHITELIST, member.name) and member.hpp ~= 0 and member.hpp < 75 then
+
+                verbose(string.format('target to cure: %s', member.name))
+                -- print( PARTY_QUEUE_COUNTER, PARTY_QUEUE_LIMIT)
+                if PARTY_QUEUE_COUNTER <= PARTY_QUEUE_LIMIT then
+                    PARTY_QUEUE_COUNTER = PARTY_QUEUE_COUNTER + 1
+                    -- print('adding heal')
+                    local tmp_details = table.copy(SPELL_FLAG_MAP['cure'])
+                    if OPTIONS.LEADER_ONLY then
+                        tmp_details.tiers = {
+                            -- " IV",
+                            " III",
+                            " II",
+                            ""
+                        }
+                    else
+                        tmp_details.tiers = {" III", " II", ""}
+                    end
+                    table.insert(TASK_QUEUE, {
+                        flag = 'cure',
+                        args = {'cure', member.name},
+                        sender = member.name,
+                        target = member.name,
+                        type = 'spell',
+                        spell_details = tmp_details,
+                        from_queue = true,
+                    })
+                    return
                 end
             end
         end
@@ -370,7 +436,13 @@ function process_queue()
                 windower.send_command(string.format('input %1s I\'m cured!', TELL_MODE))
                 TOGGLES.SUFFERING = false
             elseif TOGGLES.SUFFERING == true then
-                return
+                -- return
+                if TOGGLES.SUFFERING then
+                    windower.send_command(string.format('input %1s Trying to use Remedy.', TELL_MODE))
+                    windower.send_command(string.format('input /item Remedy <me>'))
+                    sleep(1)
+                    TOGGLES.SUFFERING = false
+                end
             end
 
             STATUS_ALERT = true
@@ -471,14 +543,7 @@ function cast_spell(task_table)
     else
         spell_resource = primed_spells[spell_details.name]
     end
-
-    player_info = windower.ffxi.get_player()
-    if player_info.in_combat then
-        OPTIONS.IN_COMBAT = true
-    else
-        OPTIONS.IN_COMBAT = false
-    end
-    combat_check = spell_details.offensive == false or (spell_details.offensive == true and OPTIONS.IN_COMBAT)
+    combat_check = spell_details.offensive == false or (spell_details.offensive == true and windower.ffxi.get_player().in_combat)
 
     -- if combat_check then
     --     verbose ('in combat or healing spell')
@@ -531,7 +596,7 @@ function cast_spell(task_table)
         if #TASK_QUEUE == 0 and task_table.from_queue ~= nil then
             -- verbose('no remaining tasks')
             verbose(#TASK_QUEUE, 'from queue')
-            sleep(cast_time)
+            sleep(cast_time + 0.5)
         elseif #TASK_QUEUE == 0 and task_table.from_queue == nil then -- try to handle non-queued spell delay
             -- verbose('no remaining tasks(not queue)')
             verbose(#TASK_QUEUE, 'not queue')
@@ -626,7 +691,7 @@ function execute_leader_command(task_table)
             windower.send_command(string.format('ffo %s', LEADER_NAME))
             TOGGLES.ALWAYS_FOLLOW = true
 
-            if sub_command and 0 < tonumber(sub_command) and tonumber(sub_command) < 11 then
+            if sub_command and 0 < tonumber(sub_command) and tonumber(sub_command) < 20 then
                 windower.send_command(string.format('ffo min %s', sub_command))
                 verbose(string.format('ffo min %s', sub_command))
             end
@@ -944,11 +1009,13 @@ function split(inputstr, sep)
 end
 
 function sleep(n)  -- seconds
-    verbose('sleep')
+    verbose('sleep', tostring(n))
     local clock = os.clock
     local t0 = clock()
     -- print(t0)
-    while clock() - t0 <= n do end
+    while clock() - t0 <= n do
+        -- verbose(tostring(clock() - t0))
+    end
 
     verbose('endsleep')
     -- t0 = clock()
@@ -964,7 +1031,7 @@ function table_to_str(target_table, delimiter)
 end
 
 function listContains(list, value)
-    verbose('check list')
+    -- verbose('check list')
     if type(value) == 'table' then
         for _, v in pairs(value) do
             found = listContains(list, v)
